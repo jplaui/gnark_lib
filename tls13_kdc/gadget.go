@@ -17,8 +17,8 @@ limitations under the License.
 package tls13_kdc
 
 import (
-	sha256 "gnark_circuits/sha256"
-	u "gnark_circuits/utils"
+	sha256 "gnark_lib/sha256"
+	u "gnark_lib/utils"
 
 	"github.com/consensys/gnark/frontend"
 )

@@ -22,13 +22,13 @@ import (
 	"strings"
 	"time"
 
-	aes "gnark_circuits/aes128"
-	sha256 "gnark_circuits/sha256"
-	tag13 "gnark_circuits/tls13_authtag"
-	kdc "gnark_circuits/tls13_kdc"
-	record13 "gnark_circuits/tls13_record"
+	aes "gnark_lib/aes128"
+	sha256 "gnark_lib/sha256"
+	tag13 "gnark_lib/tls13_authtag"
+	kdc "gnark_lib/tls13_kdc"
+	record13 "gnark_lib/tls13_record"
 
-	u "gnark_circuits/utils"
+	u "gnark_lib/utils"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"

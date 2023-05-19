@@ -1,9 +1,9 @@
-module gnark_circuits
+module gnark_lib
 
 go 1.19
 
 require (
-	github.com/consensys/gnark v0.7.2-0.20230515144225-7d3c0f5eca9c
+	github.com/consensys/gnark v0.7.2-0.20230518132517-274c883477ec
 	github.com/consensys/gnark-crypto v0.11.1-0.20230508024855-0cd4994b7f0b
 	github.com/montanaflynn/stats v0.7.1
 	github.com/rs/zerolog v1.29.1

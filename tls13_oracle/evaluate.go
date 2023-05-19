@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	u "gnark_circuits/utils"
+	u "gnark_lib/utils"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"

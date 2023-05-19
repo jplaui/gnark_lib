@@ -17,7 +17,7 @@ limitations under the License.
 package tls13_authtag
 
 import (
-	aes "gnark_circuits/aes128"
+	aes "gnark_lib/aes128"
 
 	"github.com/consensys/gnark/frontend"
 )

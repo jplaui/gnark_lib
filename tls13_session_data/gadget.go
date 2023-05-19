@@ -17,8 +17,8 @@ limitations under the License.
 package tls13_session_data
 
 import (
-	sha256 "gnark_circuits/sha256"
-	record13 "gnark_circuits/tls13_record"
+	sha256 "gnark_lib/sha256"
+	record13 "gnark_lib/tls13_record"
 
 	"github.com/consensys/gnark/frontend"
 )

@@ -17,9 +17,9 @@ limitations under the License.
 package tls13_oracle
 
 import (
-	tag13 "gnark_circuits/tls13_authtag"
-	kdc "gnark_circuits/tls13_kdc"
-	record13 "gnark_circuits/tls13_record"
+	tag13 "gnark_lib/tls13_authtag"
+	kdc "gnark_lib/tls13_kdc"
+	record13 "gnark_lib/tls13_record"
 
 	"github.com/consensys/gnark/frontend"
 )

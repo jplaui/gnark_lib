@@ -17,9 +17,9 @@ limitations under the License.
 package tls13_session_commit
 
 import (
-	sha256 "gnark_circuits/sha256"
-	tag13 "gnark_circuits/tls13_authtag"
-	kdc "gnark_circuits/tls13_kdc"
+	sha256 "gnark_lib/sha256"
+	tag13 "gnark_lib/tls13_authtag"
+	kdc "gnark_lib/tls13_kdc"
 
 	"github.com/consensys/gnark/frontend"
 )

@@ -23,7 +23,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 
-	u "gnark_circuits/utils"
+	u "gnark_lib/utils"
 )
 
 type Tls13SessionDataWrapper struct {

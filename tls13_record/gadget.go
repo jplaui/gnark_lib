@@ -17,8 +17,8 @@ limitations under the License.
 package tls13_record
 
 import (
-	aes "gnark_circuits/aes128"
-	u "gnark_circuits/utils"
+	aes "gnark_lib/aes128"
+	u "gnark_lib/utils"
 
 	"github.com/consensys/gnark/frontend"
 )
