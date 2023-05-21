@@ -6,6 +6,11 @@
 *.so
 *.dylib
 
+# go mods, if repo used as package, 
+# these files cannot be there, thus push without them
+go.mod
+go.sum
+
 # Test binary, built with `go test -c`
 *.test
 

@@ -1,0 +1,13 @@
+{
+ "backend": "plonk",
+ "data_size": "32",
+ "iterations": "2",
+ "time_compile_mean": "7.475",
+ "time_compile_standard_deviation": "0.057",
+ "time_prove_mean": "7.358",
+ "time_prove_standard_deviation": "0.061",
+ "time_setup_mean": "6.131",
+ "time_setup_standard_deviation": "0.033",
+ "time_verify_mean": "0.002",
+ "time_verify_standard_deviation": "0.000"
+}
