@@ -6,6 +6,7 @@ hello:
 	@echo "two evaluations are supported, 1. 'make evaluate-circuits' and 2. 'make evaluate-constraints'."
 
 build:
+	go mod init circuits
 	go get github.com/consensys/gnark@develop
 	go mod tidy
 	chmod +x evaluate_constraints.sh

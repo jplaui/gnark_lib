@@ -17,6 +17,8 @@ limitations under the License.
 package gadgets
 
 import (
+	"bytes"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -69,6 +71,15 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 	data["compile"] = elapsed
 
+	// measure byte size
+	var buf bytes.Buffer
+	bytesWritten, err := ccs.WriteTo(&buf)
+	if err != nil {
+		log.Error().Msg("ccs serialization error")
+		return nil, err
+	}
+	log.Debug().Str("written", strconv.FormatInt(bytesWritten, 10)).Msg("compiled constraint system bytes")
+
 	// kzg setup if using plonk
 	if backend == "plonk" {
 		srs, err = test.NewKZGSRS(ccs)
@@ -100,6 +111,22 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 		log.Debug().Str("elapsed", elapsed.String()).Msg("groth16.Setup time.")
 
 		data["setup"] = elapsed
+
+		// measure byte size
+		var buf1 bytes.Buffer
+		bytesWritten1, err := pk.WriteTo(&buf1)
+		if err != nil {
+			log.Error().Msg("ccs serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.FormatInt(bytesWritten1, 10)).Msg("prover key bytes")
+		var buf2 bytes.Buffer
+		bytesWritten2, err := vk.WriteTo(&buf2)
+		if err != nil {
+			log.Error().Msg("ccs serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.FormatInt(bytesWritten2, 10)).Msg("verifier key bytes")
 
 		// prove
 		start = time.Now()
