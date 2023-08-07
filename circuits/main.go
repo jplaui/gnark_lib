@@ -68,6 +68,9 @@ func main() {
 	// checks for -tls13-key-data flag
 	kdc_oracle := flag.Bool("tls13-oracle", false, "tls13 kdc and data proof")
 
+	// checks for -tls13-deco-proxy flag
+	kdc_decoproxy := flag.Bool("tls13-deco-proxy", false, "tls13 key commit, authtag and record proof")
+
 	// checks for -evaluate-constraints flag
 	// evalutes most of the functions, used for quick testing
 	eval_constraints := flag.Bool("evaluate-constraints", false, "evaluates all circuits with different backends. use the backend flag to specify the backend")
@@ -220,6 +223,36 @@ func main() {
 
 		g.AddStats(data, s, false)
 		filename := "oracle_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		g.StoreM(data, "./jsons/", filename)
+	}
+
+	// deco proxy circuit, key commit + authtag + record
+	if *kdc_decoproxy {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(*iterations)
+		data["backend"] = *ps
+		if *byte_size != 0 {
+			data["data_size"] = strconv.Itoa(*byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		var s []map[string]time.Duration
+		for i := *iterations; i > 0; i-- {
+			data, err := g.EvaluateDecoProxy(*ps, *compile)
+			if err != nil {
+				log.Error().Msg("g.EvaluateDecoProxy()")
+			}
+			s = append(s, data)
+		}
+
+		// return if only interested in circuit constraints
+		if *compile {
+			return
+		}
+
+		g.AddStats(data, s, false)
+		filename := "decoproxy_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
 		g.StoreM(data, "./jsons/", filename)
 	}
 
