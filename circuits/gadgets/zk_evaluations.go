@@ -18,6 +18,7 @@ package gadgets
 
 import (
 	"encoding/hex"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -119,6 +120,107 @@ func EvaluateSha256(backend string, compile bool, in, hash string) (map[string]t
 	// var circuit kdcServerKey
 	circuit := Sha256Wrapper{
 		In: make([]frontend.Variable, inByteLen),
+	}
+
+	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
+// execution of circuit function of program
+func EvaluateMimc(backend string, compile bool, in []big.Int, hash []byte) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateMimc")
+
+	// kdc to bytes
+	// byteSlice, _ := hex.DecodeString(in)
+	inByteLen := len(in)
+
+	log.Debug().Str("length", strconv.Itoa(inByteLen)).Msg("mimc input size")
+
+	// byteSlice, _ = hex.DecodeString(hash)
+	// hashByteLen := len(byteSlice)
+
+	// s := "a"
+	// i := new(big.Int)
+	// i.SetString(s, 16)
+	// fmt.Println(i)
+
+	// witness definition kdc
+	// inAssign := StrToIntSlice(in, true)
+	// hashAssign := StrToIntSlice(hash, true)
+
+	// witness values preparation
+	assignment := MimcWrapper{
+		In:   make([]frontend.Variable, inByteLen),
+		Hash: hash,
+	}
+
+	// kdc assign
+	for i := 0; i < inByteLen; i++ {
+		assignment.In[i] = in[i].String()
+	}
+
+	// var circuit kdcServerKey
+	circuit := MimcWrapper{
+		In: make([]frontend.Variable, inByteLen),
+	}
+
+	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
+// execution of circuit function of program
+func EvaluateZkOpen(backend string, compile bool, in []big.Int, hash []byte) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateZkOpen")
+
+	// compute parity checksum on input
+	var parityBytes [16]byte
+	for i := 0; i < len(in); i++ {
+		for j := 0; j < len(parityBytes); j++ {
+			parityBytes[j] = parityBytes[j] ^ in[i].Bytes()[:16][j] ^ in[i].Bytes()[16:][j]
+		}
+	}
+
+	// add mask
+	mask := "4647eb76ffd794580046acf096d6b7a2"
+	maskBytes, _ := hex.DecodeString(mask)
+	for j := 0; j < len(parityBytes); j++ {
+		parityBytes[j] = parityBytes[j] ^ maskBytes[j]
+	}
+
+	parity := hex.EncodeToString(parityBytes[:])
+	maskAssign := StrToIntSlice(mask, true)
+	parityAssign := StrToIntSlice(parity, true)
+	inByteLen := len(in)
+
+	log.Debug().Str("length", strconv.Itoa(inByteLen)).Msg("zkOpen input size")
+
+	assignment := zkOpenWrapper{
+		InMap:  make([][32]frontend.Variable, inByteLen),
+		Hash:   hash,
+		Mask:   [16]frontend.Variable{},
+		Parity: [16]frontend.Variable{},
+	}
+
+	for i := 0; i < 16; i++ {
+		assignment.Mask[i] = maskAssign[i]
+	}
+	for i := 0; i < inByteLen; i++ {
+		byteSlice := in[i].Bytes()
+		for j := 0; j < len(byteSlice); j++ {
+			assignment.InMap[i][j] = int(byteSlice[j])
+		}
+	}
+	for i := 0; i < 16; i++ {
+		assignment.Parity[i] = parityAssign[i]
+	}
+
+	// var circuit kdcServerKey
+	circuit := zkOpenWrapper{
+		InMap: make([][32]frontend.Variable, inByteLen),
 	}
 
 	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)

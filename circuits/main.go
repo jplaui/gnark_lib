@@ -23,13 +23,19 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"io"
+	"math/big"
 
 	"flag"
 	"strconv"
 	"time"
 
+	"github.com/consensys/gnark-crypto/ecc"
+	gnarkHash "github.com/consensys/gnark-crypto/hash"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/hkdf"
 )
 
 type shaData struct {
@@ -80,6 +86,12 @@ func main() {
 
 	// individual evaluation flags
 	sha256_circuit := flag.Bool("sha256", false, "evaluates sha256 circuit")
+
+	// individual evaluation flags
+	mimc_circuit := flag.Bool("mimc", false, "evaluates mimc circuit")
+
+	// individual evaluation flags
+	zkopen_circuit := flag.Bool("tls13-zkopen", false, "evaluates zkopen circuit")
 
 	// individual evaluation flags
 	aes128_circuit := flag.Bool("aes128", false, "evaluates aes128 circuit")
@@ -318,6 +330,146 @@ func main() {
 		}
 		g.AddStats(data, s, false)
 		filename := "sha256_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		g.StoreM(data, "./jsons/", filename)
+	}
+
+	// zkopen evaluation
+	if *zkopen_circuit {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(*iterations)
+		data["backend"] = *ps
+		if *byte_size != 0 {
+			data["data_size"] = strconv.Itoa(*byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		// generate data for evaluation
+		curve := ecc.BN254
+		modulus := curve.ScalarField()
+		fmt.Println("modulus:", modulus)
+		size := *byte_size / 32
+		// size limit= 19360,
+		// this number is divisible by 32 (19360/32=605) and size=19359 still works
+		// so possible to hash 16 kb in mimc, takes 1.06s to prove
+		if size%32 == 0 {
+			size += 1
+		}
+		fmt.Println("size mimc:", size)
+
+		// random input generation
+		hash := sha256.New
+		sString := "The quick brown fox jumps over the lazy dog"
+		salt := make([]byte, 32)
+		io.ReadFull(rand.Reader, salt)
+		info := []byte("")
+		secret := []byte(sString)
+		kdf := hkdf.New(hash, secret, salt, info)
+		fmt.Println("kdf:", kdf)
+
+		// generate input
+		hashInput := make([]big.Int, size)
+		zkInput := make([]big.Int, size)
+		for i := 0; i < size; i++ {
+			key2 := make([]byte, 32)
+			io.ReadFull(kdf, key2)
+			s := hex.EncodeToString(key2)
+			hashInput[i].SetString(s, 16)
+			zkInput[i].SetString(s, 16)
+			hashInput[i].Mod(&hashInput[i], modulus)
+		}
+		// hashInput := make([]big.Int, size)
+		// hashInput[0].Sub(modulus, big.NewInt(1))
+		// for i := 1; i < size; i++ {
+		// 	hashInput[i].Add(&hashInput[i-1], &hashInput[i-1]).Mod(&hashInput[i], modulus)
+		// }
+
+		// byteArray := make([]byte, *byte_size)
+		// in := hex.EncodeToString(byteArray)
+		// running MiMC (Go)
+		hashFunc := gnarkHash.MIMC_BN254
+		goMimc := hashFunc.New()
+		for i := 0; i < size; i++ {
+			inputBytes := hashInput[i].Bytes()
+			for i := len(inputBytes); i < 32; i++ {
+				inputBytes = append(inputBytes, 0) // make sure input is size 32
+			}
+			goMimc.Write(inputBytes) // hashInput[i].Bytes()
+		}
+		expectedh := goMimc.Sum(nil)
+
+		var s []map[string]time.Duration
+		for i := *iterations; i > 0; i-- {
+			data, err := g.EvaluateZkOpen(*ps, *compile, zkInput, expectedh)
+			if err != nil {
+				log.Error().Msg("e.EvaluateZkOpen()")
+			}
+			s = append(s, data)
+		}
+		if *compile {
+			return
+		}
+		g.AddStats(data, s, false)
+		filename := "zkopen_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		g.StoreM(data, "./jsons/", filename)
+	}
+
+	// mimc evaluation
+	if *mimc_circuit {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(*iterations)
+		data["backend"] = *ps
+		if *byte_size != 0 {
+			data["data_size"] = strconv.Itoa(*byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		// generate data for evaluation
+		curve := ecc.BN254
+		modulus := curve.ScalarField()
+		size := *byte_size / 32
+		// size limit= 19360,
+		// this number is divisible by 32 (19360/32=605) and size=19359 still works
+		// so possible to hash 16 kb in mimc, takes 1.06s to prove
+		if size%32 == 0 {
+			size += 1
+		}
+		hashInput := make([]big.Int, size)
+		hashInput[0].Sub(modulus, big.NewInt(1))
+		for i := 1; i < size; i++ {
+			hashInput[i].Add(&hashInput[i-1], &hashInput[i-1]).Mod(&hashInput[i], modulus)
+		}
+
+		// byteArray := make([]byte, *byte_size)
+		// in := hex.EncodeToString(byteArray)
+		// running MiMC (Go)
+		hashFunc := gnarkHash.MIMC_BN254
+		goMimc := hashFunc.New()
+		for i := 0; i < size; i++ {
+			goMimc.Write(hashInput[i].Bytes())
+		}
+		// for i := 0; i < 10; i++ {
+		// }
+		expectedh := goMimc.Sum(nil)
+		// hash := hex.EncodeToString(expectedh)
+
+		// fmt.Println("mimc hash:", hash)
+		// fmt.Println("mimc input:", in)
+
+		var s []map[string]time.Duration
+		for i := *iterations; i > 0; i-- {
+			data, err := g.EvaluateMimc(*ps, *compile, hashInput, expectedh)
+			if err != nil {
+				log.Error().Msg("e.EvaluateMimc()")
+			}
+			s = append(s, data)
+		}
+		if *compile {
+			return
+		}
+		g.AddStats(data, s, false)
+		filename := "mimc_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
 		g.StoreM(data, "./jsons/", filename)
 	}
 
