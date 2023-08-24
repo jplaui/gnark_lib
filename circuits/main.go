@@ -370,13 +370,39 @@ func main() {
 		// generate input
 		hashInput := make([]big.Int, size)
 		zkInput := make([]big.Int, size)
+
+		// generate random plaintext
+		plainBytes := make([]byte, size*32)
+		cipherBytes := make([]byte, size*32)
+		rand.Read(plainBytes)
+		plain := hex.EncodeToString(plainBytes)
+
+		// generate random input
 		for i := 0; i < size; i++ {
-			key2 := make([]byte, 32)
-			io.ReadFull(kdf, key2)
-			s := hex.EncodeToString(key2)
+
+			// hkdf
+			// key2 := make([]byte, 32)
+			// io.ReadFull(kdf, key2)
+			// s := hex.EncodeToString(key2)
+
+			s := "4647eb76ffd794580046acf096d6b7a22147cb7623d7145101461c1016162734"
+			key2, _ := hex.DecodeString(s)
+			// var s string
+			// var key2 []byte
+			if i%3 == 0 {
+				s = "16374b76af2734585056ac5095d5b5a52542cb1613173413034615159626a734"
+				key2, _ = hex.DecodeString(s)
+			}
+
+			// hash data
 			hashInput[i].SetString(s, 16)
 			zkInput[i].SetString(s, 16)
 			hashInput[i].Mod(&hashInput[i], modulus)
+
+			// encryption data
+			for j := 0; j < 32; j++ {
+				cipherBytes[(i*32)+j] = plainBytes[(i*32)+j] ^ key2[j]
+			}
 		}
 		// hashInput := make([]big.Int, size)
 		// hashInput[0].Sub(modulus, big.NewInt(1))
@@ -384,23 +410,26 @@ func main() {
 		// 	hashInput[i].Add(&hashInput[i-1], &hashInput[i-1]).Mod(&hashInput[i], modulus)
 		// }
 
+		// get cipher as hex string
+		cipher := hex.EncodeToString(cipherBytes)
+
 		// byteArray := make([]byte, *byte_size)
 		// in := hex.EncodeToString(byteArray)
 		// running MiMC (Go)
 		hashFunc := gnarkHash.MIMC_BN254
 		goMimc := hashFunc.New()
 		for i := 0; i < size; i++ {
-			inputBytes := hashInput[i].Bytes()
-			for i := len(inputBytes); i < 32; i++ {
-				inputBytes = append(inputBytes, 0) // make sure input is size 32
-			}
-			goMimc.Write(inputBytes) // hashInput[i].Bytes()
+			// inputBytes := hashInput[i].Bytes()
+			// for j := len(inputBytes); j < 32; j++ {
+			// 	inputBytes = append(inputBytes, 0) // make sure input is size 32
+			// }
+			goMimc.Write(hashInput[i].Bytes()) // hashInput[i].Bytes()
 		}
 		expectedh := goMimc.Sum(nil)
 
 		var s []map[string]time.Duration
 		for i := *iterations; i > 0; i-- {
-			data, err := g.EvaluateZkOpen(*ps, *compile, zkInput, expectedh)
+			data, err := g.EvaluateZkOpen(*ps, *compile, zkInput, expectedh, plain, cipher)
 			if err != nil {
 				log.Error().Msg("e.EvaluateZkOpen()")
 			}

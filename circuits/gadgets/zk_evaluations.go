@@ -172,7 +172,7 @@ func EvaluateMimc(backend string, compile bool, in []big.Int, hash []byte) (map[
 }
 
 // execution of circuit function of program
-func EvaluateZkOpen(backend string, compile bool, in []big.Int, hash []byte) (map[string]time.Duration, error) {
+func EvaluateZkOpen(backend string, compile bool, in []big.Int, hash []byte, plain, cipher string) (map[string]time.Duration, error) {
 
 	log.Debug().Msg("EvaluateZkOpen")
 
@@ -191,18 +191,27 @@ func EvaluateZkOpen(backend string, compile bool, in []big.Int, hash []byte) (ma
 		parityBytes[j] = parityBytes[j] ^ maskBytes[j]
 	}
 
+	byteSlice, _ := hex.DecodeString(plain)
+	plainByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(cipher)
+	cipherByteLen := len(byteSlice)
+
 	parity := hex.EncodeToString(parityBytes[:])
 	maskAssign := StrToIntSlice(mask, true)
 	parityAssign := StrToIntSlice(parity, true)
+	plainAssign := StrToIntSlice(plain, true)
+	cipherAssign := StrToIntSlice(cipher, true)
 	inByteLen := len(in)
 
 	log.Debug().Str("length", strconv.Itoa(inByteLen)).Msg("zkOpen input size")
 
 	assignment := zkOpenWrapper{
-		InMap:  make([][32]frontend.Variable, inByteLen),
-		Hash:   hash,
-		Mask:   [16]frontend.Variable{},
-		Parity: [16]frontend.Variable{},
+		InMap:      make([][32]frontend.Variable, inByteLen),
+		Hash:       hash,
+		Mask:       [16]frontend.Variable{},
+		Parity:     [16]frontend.Variable{},
+		Ciphertext: make([]frontend.Variable, cipherByteLen),
+		Plaintext:  make([]frontend.Variable, plainByteLen),
 	}
 
 	for i := 0; i < 16; i++ {
@@ -217,10 +226,18 @@ func EvaluateZkOpen(backend string, compile bool, in []big.Int, hash []byte) (ma
 	for i := 0; i < 16; i++ {
 		assignment.Parity[i] = parityAssign[i]
 	}
+	for i := 0; i < cipherByteLen; i++ {
+		assignment.Ciphertext[i] = cipherAssign[i]
+	}
+	for i := 0; i < plainByteLen; i++ {
+		assignment.Plaintext[i] = plainAssign[i]
+	}
 
 	// var circuit kdcServerKey
 	circuit := zkOpenWrapper{
-		InMap: make([][32]frontend.Variable, inByteLen),
+		InMap:      make([][32]frontend.Variable, inByteLen),
+		Ciphertext: make([]frontend.Variable, cipherByteLen),
+		Plaintext:  make([]frontend.Variable, plainByteLen),
 	}
 
 	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
