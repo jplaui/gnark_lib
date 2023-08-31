@@ -88,10 +88,16 @@ func main() {
 	sha256_circuit := flag.Bool("sha256", false, "evaluates sha256 circuit")
 
 	// individual evaluation flags
+	sha2_circuit := flag.Bool("sha2", false, "evaluates sha2 circuit")
+
+	// individual evaluation flags
 	mimc_circuit := flag.Bool("mimc", false, "evaluates mimc circuit")
 
 	// individual evaluation flags
 	zkopen_circuit := flag.Bool("tls13-zkopen", false, "evaluates zkopen circuit")
+
+	// individual evaluation flags
+	zkopen_circuit2 := flag.Bool("tls13-zkopen2", false, "evaluates zkopen circuit")
 
 	// individual evaluation flags
 	aes128_circuit := flag.Bool("aes128", false, "evaluates aes128 circuit")
@@ -298,6 +304,42 @@ func main() {
 		g.StoreM(data, "./jsons/", filename)
 	}
 
+	// sha2 evaluation
+	if *sha2_circuit {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(*iterations)
+		data["backend"] = *ps
+		if *byte_size != 0 {
+			data["data_size"] = strconv.Itoa(*byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		// generate data for evaluation
+		bts := make([]byte, *byte_size)
+		dgst := sha256.Sum256(bts)
+		// in := hex.EncodeToString(byteArray)
+		// h := sha256.New()
+		// h.Write(byteArray)
+		// sum := h.Sum(nil)
+		// hash := hex.EncodeToString(sum)
+
+		var s []map[string]time.Duration
+		for i := *iterations; i > 0; i-- {
+			data, err := g.EvaluateSha2(*ps, *compile, bts, dgst)
+			if err != nil {
+				log.Error().Msg("e.EvaluateSha256()")
+			}
+			s = append(s, data)
+		}
+		if *compile {
+			return
+		}
+		g.AddStats(data, s, false)
+		filename := "sha2_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		g.StoreM(data, "./jsons/", filename)
+	}
+
 	// sha256 evaluation
 	if *sha256_circuit {
 		data := map[string]string{}
@@ -440,6 +482,116 @@ func main() {
 		}
 		g.AddStats(data, s, false)
 		filename := "zkopen_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		g.StoreM(data, "./jsons/", filename)
+	}
+
+	// zkopen evaluation
+	if *zkopen_circuit2 {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(*iterations)
+		data["backend"] = *ps
+		if *byte_size != 0 {
+			data["data_size"] = strconv.Itoa(*byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		// generate data for evaluation
+		curve := ecc.BN254
+		modulus := curve.ScalarField()
+		fmt.Println("modulus:", modulus)
+		size := *byte_size / 32
+		// size limit= 19360,
+		// this number is divisible by 32 (19360/32=605) and size=19359 still works
+		// so possible to hash 16 kb in mimc, takes 1.06s to prove
+		if size%32 == 0 {
+			size += 1
+		}
+		fmt.Println("size mimc:", size)
+
+		// random input generation
+		hash := sha256.New
+		sString := "The quick brown fox jumps over the lazy dog"
+		salt := make([]byte, 32)
+		io.ReadFull(rand.Reader, salt)
+		info := []byte("")
+		secret := []byte(sString)
+		kdf := hkdf.New(hash, secret, salt, info)
+		fmt.Println("kdf:", kdf)
+
+		// generate input
+		hashInput := make([]big.Int, size)
+		zkInput := make([]big.Int, size)
+
+		// generate random plaintext
+		plainBytes := make([]byte, size*32)
+		cipherBytes := make([]byte, size*32)
+		rand.Read(plainBytes)
+		plain := hex.EncodeToString(plainBytes)
+
+		// generate random input
+		for i := 0; i < size; i++ {
+
+			// hkdf
+			// key2 := make([]byte, 32)
+			// io.ReadFull(kdf, key2)
+			// s := hex.EncodeToString(key2)
+
+			s := "4647eb76ffd794580046acf096d6b7a22147cb7623d7145101461c1016162734"
+			key2, _ := hex.DecodeString(s)
+			// var s string
+			// var key2 []byte
+			if i%3 == 0 {
+				s = "16374b76af2734585056ac5095d5b5a52542cb1613173413034615159626a734"
+				key2, _ = hex.DecodeString(s)
+			}
+
+			// hash data
+			hashInput[i].SetString(s, 16)
+			zkInput[i].SetString(s, 16)
+			hashInput[i].Mod(&hashInput[i], modulus)
+
+			// encryption data
+			for j := 0; j < 32; j++ {
+				cipherBytes[(i*32)+j] = plainBytes[(i*32)+j] ^ key2[j]
+			}
+		}
+		// hashInput := make([]big.Int, size)
+		// hashInput[0].Sub(modulus, big.NewInt(1))
+		// for i := 1; i < size; i++ {
+		// 	hashInput[i].Add(&hashInput[i-1], &hashInput[i-1]).Mod(&hashInput[i], modulus)
+		// }
+
+		// get cipher as hex string
+		cipher := hex.EncodeToString(cipherBytes)
+
+		// byteArray := make([]byte, *byte_size)
+		// in := hex.EncodeToString(byteArray)
+		// running MiMC (Go)
+		hashFunc := gnarkHash.MIMC_BN254
+		goMimc := hashFunc.New()
+		for i := 0; i < size; i++ {
+			// inputBytes := hashInput[i].Bytes()
+			// for j := len(inputBytes); j < 32; j++ {
+			// 	inputBytes = append(inputBytes, 0) // make sure input is size 32
+			// }
+			goMimc.Write(hashInput[i].Bytes()) // hashInput[i].Bytes()
+		}
+		expectedh := goMimc.Sum(nil)
+
+		var s []map[string]time.Duration
+		for i := *iterations; i > 0; i-- {
+			data, err := g.EvaluateZkOpen2(*ps, *compile, zkInput, expectedh, plain, cipher)
+			if err != nil {
+				log.Error().Msg("e.EvaluateZkOpen()")
+			}
+			s = append(s, data)
+		}
+		if *compile {
+			return
+		}
+		g.AddStats(data, s, false)
+		filename := "zkopen2_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
 		g.StoreM(data, "./jsons/", filename)
 	}
 

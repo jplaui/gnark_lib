@@ -1,13 +1,13 @@
 {
- "backend": "groth16",
- "data_size": "256",
+ "backend": "plonk",
+ "data_size": "65536",
  "iterations": "1",
- "time_compile_mean": "0.004",
+ "time_compile_mean": "62.912",
  "time_compile_standard_deviation": "0.000",
- "time_prove_mean": "0.019",
+ "time_prove_mean": "189.509",
  "time_prove_standard_deviation": "0.000",
- "time_setup_mean": "0.155",
+ "time_setup_mean": "53.317",
  "time_setup_standard_deviation": "0.000",
- "time_verify_mean": "0.001",
+ "time_verify_mean": "0.224",
  "time_verify_standard_deviation": "0.000"
 }

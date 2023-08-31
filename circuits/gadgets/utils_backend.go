@@ -91,6 +91,7 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 		elapsed := time.Since(start)
 		data["compile"] = elapsed
 
+		// measure byte size
 		var bufExtra bytes.Buffer
 		bytesWritten, err := srs.WriteTo(&bufExtra)
 		if err != nil {
@@ -149,6 +150,7 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		data["prove"] = elapsed
 
+		// measure bytes
 		var buf3 bytes.Buffer
 		bytesWritten3, err := proof.WriteTo(&buf3)
 		if err != nil {
@@ -160,6 +162,7 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 		// generate public witness
 		publicWitness, _ := witness.Public()
 
+		// measure bytes
 		witnessBytes, err := publicWitness.MarshalBinary()
 		if err != nil {
 			log.Error().Msg("witness marshal binary error")
@@ -221,6 +224,7 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		data["prove"] = elapsed
 
+		// measure bytes
 		var buf3 bytes.Buffer
 		bytesWritten3, err := proof.WriteTo(&buf3)
 		if err != nil {
@@ -232,6 +236,7 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 		// generate public witness
 		publicWitness, _ := witness.Public()
 
+		// measure bytes
 		witnessBytes, err := publicWitness.MarshalBinary()
 		if err != nil {
 			log.Error().Msg("witness marshal binary error")
