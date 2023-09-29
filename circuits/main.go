@@ -583,7 +583,7 @@ func main() {
 		for i := *iterations; i > 0; i-- {
 			data, err := g.EvaluateZkOpen2(*ps, *compile, zkInput, expectedh, plain, cipher)
 			if err != nil {
-				log.Error().Msg("e.EvaluateZkOpen()")
+				log.Error().Msg("e.EvaluateZkOpen2()")
 			}
 			s = append(s, data)
 		}
