@@ -126,6 +126,9 @@ func main() {
 	// individual evaluation flags
 	gtlt_circuit := flag.Bool("gtlt", false, "evaluates gtlt circuit")
 
+	// individual evaluation flags
+	merklecombined_circuit := flag.Bool("merklecombined", false, "evaluates merklecombined circuit")
+
 	// checks for -evaluate-constraints flag
 	iterations := flag.Int("iterations", 0, "indicates the iterations of the same evaluation")
 
@@ -942,6 +945,35 @@ func main() {
 
 		g.AddStats(data, s, false)
 		filename := "gtlt_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		g.StoreM(data, "./jsons/", filename)
+	}
+
+	if *merklecombined_circuit {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(*iterations)
+		data["backend"] = *ps
+		if *byte_size != 0 {
+			data["data_size"] = strconv.Itoa(*byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		var s []map[string]time.Duration
+		for i := *iterations; i > 0; i-- {
+			data, err := g.EvaluateMerkleCombined(*ps, *compile, i)
+			if err != nil {
+				log.Error().Msg("g.EvaluateMerkleCombined()")
+			}
+			s = append(s, data)
+		}
+
+		// return if only interested in circuit constraints
+		if *compile {
+			return
+		}
+
+		g.AddStats(data, s, false)
+		filename := "merkle_combined" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
 		g.StoreM(data, "./jsons/", filename)
 	}
 

@@ -17,9 +17,13 @@ limitations under the License.
 package gadgets
 
 import (
+	"bytes"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/consensys/gnark-crypto/accumulator/merkletree"
+	"github.com/consensys/gnark-crypto/hash"
 	"math/big"
 	"strconv"
 	"strings"
@@ -891,6 +895,116 @@ func EvaluateGTLT(backend string, compile bool) (map[string]time.Duration, error
 	}
 
 	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
+func EvaluateMerkleCombined(backend string, compile bool, iteration int) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateMerkleCombined")
+	type Input struct {
+		pre       int
+		threshold int
+		digest    string
+	}
+
+	dummyData := []Input{
+		{
+			pre:       150,
+			threshold: 22,
+			digest:    "17379035471511225454788665023076302145214066833795294866089173634656665878529",
+		},
+		{
+			pre:       100,
+			threshold: 22,
+			digest:    "20370067689261511688289967978544823130432235585709842144916192060767982363628",
+		},
+		{
+			pre:       50,
+			threshold: 30,
+			digest:    "3774731704481600983034525750974857263874003305993504788962595698323756265965",
+		},
+		{
+			pre:       250,
+			threshold: 30,
+			digest:    "12257825590038755162947828432906237056124914006682934215548970205934544255048",
+		},
+		{
+			pre:       51,
+			threshold: 50,
+			digest:    "10160582328381718920168357474343738046771630410201324878997416775371170118513",
+		},
+		{
+			pre:       60,
+			threshold: 40,
+			digest:    "19732466813902532818653707266849400651815823265937005135887066858089206146905",
+		},
+	}
+	input := dummyData[iteration%len(dummyData)]
+	curve := ecc.BN254
+	numLeaves := 32
+	segmentSize := 32
+	mod := curve.ScalarField()
+	modNbBytes := len(mod.Bytes())
+	depth := 5
+
+	var circuit MerkleCombined
+	circuit.Depth = depth
+	circuit.Path = make([]frontend.Variable, depth+1)
+
+	var buf bytes.Buffer
+	mimcGo := hash.MIMC_BN254.New()
+	// convert pre to bytes with padding to 32 bytes
+	inpBytes := make([]byte, 32)
+
+	preBytes := []byte(strconv.Itoa(input.pre))
+	copy(inpBytes[32-len(preBytes):], preBytes)
+
+	mimcGo.Write(inpBytes)
+
+	sum := mimcGo.Sum(nil)
+	// normalize the input with mod BN254
+	inputMod := new(big.Int).SetBytes(sum)
+	inputMod.Mod(inputMod, curve.BaseField())
+
+	sumModBytes := inputMod.Bytes()
+	buf.Write(make([]byte, modNbBytes-len(sumModBytes)))
+	buf.Write(sumModBytes)
+
+	//// some random elements for tree
+	for i := 1; i < numLeaves; i++ {
+		leaf, _ := crand.Int(crand.Reader, mod)
+
+		b := leaf.Bytes()
+
+		buf.Write(make([]byte, modNbBytes-len(b)))
+		buf.Write(b)
+	}
+
+	hGo := hash.MIMC_BN254.New()
+
+	//merkleRoot, proofPath, index, leaves := tree.Prove()
+	merkleRoot, proofPath, leaves, err := merkletree.BuildReaderProof(&buf, hGo, segmentSize, uint64(0))
+
+	// verify the proof in plain go (data part)
+	verified := merkletree.VerifyProof(hGo, merkleRoot, proofPath, 0, leaves)
+	if !verified {
+		log.Print("The merkle proof in plain go should pass", err)
+	}
+
+	var assignment MerkleCombined
+	assignment.Input = input.pre
+	assignment.Threshold = input.threshold
+	assignment.Digest = input.digest
+	assignment.RootHash = merkleRoot
+	assignment.Leaf = 0
+	assignment.Depth = depth
+	assignment.Path = make([]frontend.Variable, depth+1)
+	for i := 0; i < depth+1; i++ {
+		assignment.Path[i] = proofPath[i]
+	}
+
+	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, curve)
 
 	return data, err
 }
