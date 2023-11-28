@@ -5,7 +5,9 @@ The repo does not contain a go.mod file per default because the gnark_lib/circui
 important info: run the repo with versions: `github.com/consensys/gnark v0.9.0-alpha`, `github.com/consensys/gnark-crypto v0.11.2`
 
 ### build the code
-- run `make build` and run `make evaluate-constraints` or run `make evaluate-circuits`
+- run `go mod init circuits` then `go mod tidy`
+- (outdated) run `make build` and run `make evaluate-constraints` or run `make evaluate-circuits`
+- then, run specific flags with `go run main.go --help`
 
 ### TODOs
 - modify `zk_evaluations_test.go` file and rewrite tests according to functions only. the test functions should not produce evaluation results in json files, neither constraint numbers... cause this module is used from other repos
