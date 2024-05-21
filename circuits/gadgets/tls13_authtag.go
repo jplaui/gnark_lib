@@ -25,8 +25,8 @@ type AuthTagWrapper struct {
 	Key       [16]frontend.Variable
 	IvCounter [16]frontend.Variable `gnark:",public"`
 	Zeros     [16]frontend.Variable `gnark:",public"`
+	ECB1      [16]frontend.Variable `gnark:",public"`
 	ECB0      [16]frontend.Variable `gnark:",public"`
-	ECBK      [16]frontend.Variable `gnark:",public"`
 }
 
 // Define declares the circuit's constraints
@@ -39,8 +39,8 @@ func (circuit *AuthTagWrapper) Define(api frontend.API) error {
 		circuit.Key,
 		circuit.IvCounter,
 		circuit.Zeros,
+		circuit.ECB1,
 		circuit.ECB0,
-		circuit.ECBK,
 	)
 
 	// verify tag
@@ -54,20 +54,20 @@ type Tls13AuthTag struct {
 	Key       [16]frontend.Variable
 	IvCounter [16]frontend.Variable // `gnark:",public"`
 	Zeros     [16]frontend.Variable // `gnark:",public"`
+	ECB1      [16]frontend.Variable // `gnark:",public"`
 	ECB0      [16]frontend.Variable // `gnark:",public"`
-	ECBK      [16]frontend.Variable // `gnark:",public"`
 }
 
 func NewTls13AuthTag(api frontend.API) Tls13AuthTag {
 	return Tls13AuthTag{api: api}
 }
 
-func (circuit *Tls13AuthTag) SetParams(key, ivCounter, zeros, ecb0, ecbk [16]frontend.Variable) {
+func (circuit *Tls13AuthTag) SetParams(key, ivCounter, zeros, ecb1, ecb0 [16]frontend.Variable) {
 	circuit.Key = key
 	circuit.IvCounter = ivCounter
 	circuit.Zeros = zeros
+	circuit.ECB1 = ecb1
 	circuit.ECB0 = ecb0
-	circuit.ECBK = ecbk
 }
 
 // Define declares the circuit's constraints
@@ -77,19 +77,19 @@ func (circuit *Tls13AuthTag) Assert() error {
 	aes := NewAES128(circuit.api)
 
 	// encrypt zeros
-	ecbk := aes.Encrypt(circuit.Key, circuit.Zeros)
+	ecb0 := aes.Encrypt(circuit.Key, circuit.Zeros)
 
 	// constraint check
-	for i := 0; i < len(circuit.ECBK); i++ {
-		circuit.api.AssertIsEqual(circuit.ECBK[i], ecbk[i])
+	for i := 0; i < len(circuit.ECB0); i++ {
+		circuit.api.AssertIsEqual(circuit.ECB0[i], ecb0[i])
 	}
 
 	// encrypt iv||counter=0
-	ecb0 := aes.Encrypt(circuit.Key, circuit.IvCounter)
+	ecb1 := aes.Encrypt(circuit.Key, circuit.IvCounter)
 
 	// constraints check
-	for i := 0; i < len(circuit.ECB0); i++ {
-		circuit.api.AssertIsEqual(circuit.ECB0[i], ecb0[i])
+	for i := 0; i < len(circuit.ECB1); i++ {
+		circuit.api.AssertIsEqual(circuit.ECB1[i], ecb1[i])
 	}
 
 	return nil

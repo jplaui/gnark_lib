@@ -31,8 +31,8 @@ type Tls13OracleWrapper struct {
 	// authtag params
 	IvCounter [16]frontend.Variable `gnark:",public"`
 	Zeros     [16]frontend.Variable `gnark:",public"`
+	ECB1      [16]frontend.Variable `gnark:",public"`
 	ECB0      [16]frontend.Variable `gnark:",public"`
-	ECBK      [16]frontend.Variable `gnark:",public"`
 	// record params
 	PlainChunks    []frontend.Variable
 	Iv             [12]frontend.Variable `gnark:",public"`
@@ -65,8 +65,8 @@ func (circuit *Tls13OracleWrapper) Define(api frontend.API) error {
 	oracle.SetAuthtagParams(
 		circuit.IvCounter,
 		circuit.Zeros,
+		circuit.ECB1,
 		circuit.ECB0,
-		circuit.ECBK,
 	)
 
 	oracle.SetRecordParams(
@@ -102,8 +102,8 @@ type Tls13Oracle struct {
 	// authtag params
 	IvCounter [16]frontend.Variable // `gnark:",public"`
 	Zeros     [16]frontend.Variable // `gnark:",public"`
+	ECB1      [16]frontend.Variable // `gnark:",public"`
 	ECB0      [16]frontend.Variable // `gnark:",public"`
-	ECBK      [16]frontend.Variable // `gnark:",public"`
 
 	// record params
 	PlainChunks    []frontend.Variable
@@ -131,11 +131,11 @@ func (circuit *Tls13Oracle) SetKdcParams(IntermediateHashHSopad, MSin, XATSin, T
 	circuit.DHSin = DHSin
 }
 
-func (circuit *Tls13Oracle) SetAuthtagParams(ivCounter, zeros, ecb0, ecbk [16]frontend.Variable) {
+func (circuit *Tls13Oracle) SetAuthtagParams(ivCounter, zeros, ecb1, ecb0 [16]frontend.Variable) {
 	circuit.IvCounter = ivCounter
 	circuit.Zeros = zeros
+	circuit.ECB1 = ecb1
 	circuit.ECB0 = ecb0
-	circuit.ECBK = ecbk
 }
 
 func (circuit *Tls13Oracle) SetRecordParams(iv [12]frontend.Variable, plainChunks, cipherChunks, substring []frontend.Variable, chunkIndex, threshold frontend.Variable, substringStart, substringEnd, valueStart, valueEnd int) {
@@ -175,7 +175,7 @@ func (circuit *Tls13Oracle) Assert() {
 	// type conversion
 	var tk16 [16]frontend.Variable
 	copy(tk16[:], tk)
-	tag.SetParams(tk16, circuit.IvCounter, circuit.Zeros, circuit.ECB0, circuit.ECBK)
+	tag.SetParams(tk16, circuit.IvCounter, circuit.Zeros, circuit.ECB1, circuit.ECB0)
 
 	// verify tag
 	tag.Assert()

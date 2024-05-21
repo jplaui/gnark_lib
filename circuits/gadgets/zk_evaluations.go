@@ -510,8 +510,8 @@ func EvaluateAuthTag(backend string, compile bool) (map[string]time.Duration, er
 	ivCounter := sb.String()
 
 	zeros := "00000000000000000000000000000000"
-	ecb0 := "a5cd49b7c29ad21fedbcedc01e0f13e8"
-	ecbk := "1c9c7c260c39bcb8dcfa5fbc9330b9fa"
+	ecb1 := "a5cd49b7c29ad21fedbcedc01e0f13e8"
+	ecb0 := "1c9c7c260c39bcb8dcfa5fbc9330b9fa"
 
 	// convert to bytes
 	byteSlice, _ := hex.DecodeString(key)
@@ -520,25 +520,25 @@ func EvaluateAuthTag(backend string, compile bool) (map[string]time.Duration, er
 	ivCounterByteLen := len(dHSSlice)
 	byteSlice, _ = hex.DecodeString(zeros)
 	zerosByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(ecb1)
+	ecb1ByteLen := len(byteSlice)
 	byteSlice, _ = hex.DecodeString(ecb0)
 	ecb0ByteLen := len(byteSlice)
-	byteSlice, _ = hex.DecodeString(ecbk)
-	ecbkByteLen := len(byteSlice)
 
 	// witness definition
 	keyAssign := StrToIntSlice(key, true)
 	ivCounterAssign := StrToIntSlice(ivCounter, true)
 	zerosAssign := StrToIntSlice(zeros, true)
+	ecb1Assign := StrToIntSlice(ecb1, true)
 	ecb0Assign := StrToIntSlice(ecb0, true)
-	ecbkAssign := StrToIntSlice(ecbk, true)
 
 	// witness values preparation
 	assignment := AuthTagWrapper{
 		Key:       [16]frontend.Variable{},
 		IvCounter: [16]frontend.Variable{},
 		Zeros:     [16]frontend.Variable{},
+		ECB1:      [16]frontend.Variable{},
 		ECB0:      [16]frontend.Variable{},
-		ECBK:      [16]frontend.Variable{},
 	}
 
 	for i := 0; i < keyByteLen; i++ {
@@ -550,11 +550,11 @@ func EvaluateAuthTag(backend string, compile bool) (map[string]time.Duration, er
 	for i := 0; i < zerosByteLen; i++ {
 		assignment.Zeros[i] = zerosAssign[i]
 	}
-	for i := 0; i < ecbkByteLen; i++ {
-		assignment.ECBK[i] = ecbkAssign[i]
-	}
 	for i := 0; i < ecb0ByteLen; i++ {
 		assignment.ECB0[i] = ecb0Assign[i]
+	}
+	for i := 0; i < ecb1ByteLen; i++ {
+		assignment.ECB1[i] = ecb1Assign[i]
 	}
 
 	// var circuit kdcServerKey
