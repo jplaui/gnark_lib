@@ -18,6 +18,7 @@ package gadgets
 
 import (
 	"encoding/hex"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -118,6 +119,50 @@ func EvaluateSha256(backend string, compile bool, in, hash string) (map[string]t
 
 	// var circuit kdcServerKey
 	circuit := Sha256Wrapper{
+		In: make([]frontend.Variable, inByteLen),
+	}
+
+	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
+// execution of circuit function of program
+func EvaluateMimc(backend string, compile bool, in []big.Int, hash []byte) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateMimc")
+
+	// kdc to bytes
+	// byteSlice, _ := hex.DecodeString(in)
+	inByteLen := len(in)
+
+	log.Debug().Str("length", strconv.Itoa(inByteLen)).Msg("mimc input size")
+
+	// byteSlice, _ = hex.DecodeString(hash)
+	// hashByteLen := len(byteSlice)
+
+	// s := "a"
+	// i := new(big.Int)
+	// i.SetString(s, 16)
+	// fmt.Println(i)
+
+	// witness definition kdc
+	// inAssign := StrToIntSlice(in, true)
+	// hashAssign := StrToIntSlice(hash, true)
+
+	// witness values preparation
+	assignment := MimcWrapper{
+		In:   make([]frontend.Variable, inByteLen),
+		Hash: hash,
+	}
+
+	// kdc assign
+	for i := 0; i < inByteLen; i++ {
+		assignment.In[i] = in[i].String()
+	}
+
+	// var circuit kdcServerKey
+	circuit := MimcWrapper{
 		In: make([]frontend.Variable, inByteLen),
 	}
 

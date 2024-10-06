@@ -23,10 +23,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"math/big"
 
 	"flag"
 	"strconv"
 	"time"
+
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/hash"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -77,6 +81,9 @@ func main() {
 
 	// individual evaluation flags
 	sha256_circuit := flag.Bool("sha256", false, "evaluates sha256 circuit")
+
+	// individual evaluation flags
+	mimc_circuit := flag.Bool("mimc", false, "evaluates mimc circuit")
 
 	// individual evaluation flags
 	aes128_circuit := flag.Bool("aes128", false, "evaluates aes128 circuit")
@@ -250,6 +257,69 @@ func main() {
 
 		g.AddStats(data, s, false)
 		filename := "shacal2_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		g.StoreM(data, "./jsons/", filename)
+	}
+
+	// mimc evaluation
+	if *mimc_circuit {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(*iterations)
+		data["backend"] = *ps
+		if *byte_size != 0 {
+			data["data_size"] = strconv.Itoa(*byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		// generate data for evaluation
+		curve := ecc.BN254
+		modulus := curve.ScalarField()
+		size := *byte_size / 32
+		// size limit= 19360,
+		// this number is divisible by 32 (19360/32=605) and size=19359 still works
+		// so possible to hash 16 kb in mimc, takes 1.06s to prove
+		if size%32 == 0 {
+			size += 1
+		}
+		hashInput := make([]big.Int, size)
+		hashInput[0].Sub(modulus, big.NewInt(1))
+		for i := 1; i < size; i++ {
+			hashInput[i].Add(&hashInput[i-1], &hashInput[i-1]).Mod(&hashInput[i], modulus)
+		}
+
+		// byteArray := make([]byte, *byte_size)
+		// in := hex.EncodeToString(byteArray)
+		// running MiMC (Go)
+		hashFunc := hash.MIMC_BN254
+		goMimc := hashFunc.New()
+		for i := 0; i < size; i++ {
+			goMimc.Write(hashInput[i].Bytes())
+		}
+		// for i := 0; i < 10; i++ {
+		// }
+		expectedh := goMimc.Sum(nil)
+		// hash := hex.EncodeToString(expectedh)
+
+		// fmt.Println("mimc hash:", hash)
+		// fmt.Println("mimc input:", in)
+
+		// h := sha256.New()
+		// h.Write(byteArray)
+		// sum := h.Sum(nil)
+
+		var s []map[string]time.Duration
+		for i := *iterations; i > 0; i-- {
+			data, err := g.EvaluateMimc(*ps, *compile, hashInput, expectedh)
+			if err != nil {
+				log.Error().Msg("e.EvaluateMimc()")
+			}
+			s = append(s, data)
+		}
+		if *compile {
+			return
+		}
+		g.AddStats(data, s, false)
+		filename := "mimc_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
 		g.StoreM(data, "./jsons/", filename)
 	}
 

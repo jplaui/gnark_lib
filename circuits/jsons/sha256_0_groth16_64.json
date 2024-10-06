@@ -1,0 +1,13 @@
+{
+ "backend": "groth16",
+ "data_size": "64",
+ "iterations": "0",
+ "time_compile_mean": "NaN",
+ "time_compile_standard_deviation": "NaN",
+ "time_prove_mean": "NaN",
+ "time_prove_standard_deviation": "NaN",
+ "time_setup_mean": "NaN",
+ "time_setup_standard_deviation": "NaN",
+ "time_verify_mean": "NaN",
+ "time_verify_standard_deviation": "NaN"
+}
