@@ -10,6 +10,7 @@ The repo does not contain a go.mod file per default because the gnark_lib/circui
 - use the `-backend` flag to indicate different zk snark backends which you want the circuit to be executed in. e.g. `go run main.go -debug -tls13-session-commit -backend plonkFRI` executes the tls session commitment circuit with the plonk FRI proof system. per default, the code uses the groth16 backend if not otherwise specified.
 
 - example of evaluation call `go run main.go -debug -gcm -iterations 2 -byte-size 16 -backend plonk`
+- or run `go run main.go -debug -gcm2 -byte-size 64 -iterations 1 -backend plonk` to run the plonk lookups for aes128 in the gcm mode.
 
 #### running a test
 - jump into the `circuits/gadgets` folder and run `go test -run TestLookUpAES128 .`
