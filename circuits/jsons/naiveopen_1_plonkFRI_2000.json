@@ -1,0 +1,13 @@
+{
+ "backend": "plonkFRI",
+ "data_size": "2000",
+ "iterations": "1",
+ "time_compile_mean": "0.090",
+ "time_compile_standard_deviation": "0.000",
+ "time_prove_mean": "54.779",
+ "time_prove_standard_deviation": "0.000",
+ "time_setup_mean": "50.435",
+ "time_setup_standard_deviation": "0.000",
+ "time_verify_mean": "0.007",
+ "time_verify_standard_deviation": "0.000"
+}

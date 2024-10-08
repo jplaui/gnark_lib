@@ -2,11 +2,19 @@
  "backend": "groth16",
  "data_size": "16000",
  "iterations": "1",
+<<<<<<< HEAD
  "time_compile_mean": "1.280",
  "time_compile_standard_deviation": "0.000",
  "time_prove_mean": "1.070",
  "time_prove_standard_deviation": "0.000",
  "time_setup_mean": "7.917",
+=======
+ "time_compile_mean": "0.959",
+ "time_compile_standard_deviation": "0.000",
+ "time_prove_mean": "1.292",
+ "time_prove_standard_deviation": "0.000",
+ "time_setup_mean": "8.722",
+>>>>>>> dbaf18111c015ad0fbaf6b1df2b5620dfb4ebfed
  "time_setup_standard_deviation": "0.000",
  "time_verify_mean": "0.001",
  "time_verify_standard_deviation": "0.000"

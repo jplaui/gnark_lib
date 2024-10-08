@@ -17,7 +17,9 @@ limitations under the License.
 package gadgets
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
@@ -25,6 +27,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/math/uints"
 	"github.com/rs/zerolog/log"
 )
 
@@ -81,6 +84,53 @@ func EvaluateShacal2(backend string, compile bool) (map[string]time.Duration, er
 	var circuit Shacal2Wrapper
 
 	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
+// execution of circuit function of program
+func EvaluateSha2(backend string, compile bool, bts []byte, dgst [32]byte) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateSha2")
+
+	// kdc to bytes
+	// byteSlice, _ := hex.DecodeString(in)
+	// inByteLen := len(byteSlice)
+
+	// log.Debug().Str("length", strconv.Itoa(inByteLen)).Msg("sha2 input size")
+
+	// byteSlice, _ = hex.DecodeString(hash)
+	// hashByteLen := len(byteSlice)
+
+	// // witness definition kdc
+	// inAssign := StrToIntSlice(in, true)
+	// hashAssign := StrToIntSlice(hash, true)
+
+	witness := Sha2Wrapper{
+		In: uints.NewU8Array(bts),
+	}
+	copy(witness.Expected[:], uints.NewU8Array(dgst[:]))
+
+	// witness values preparation
+	// assignment := Sha2Wrapper{
+	// 	In:   make([]frontend.Variable, inByteLen),
+	// 	Hash: [32]frontend.Variable{},
+	// }
+
+	// kdc assign
+	// for i := 0; i < inByteLen; i++ {
+	// 	assignment.In[i] = inAssign[i]
+	// }
+	// for i := 0; i < hashByteLen; i++ {
+	// 	assignment.Hash[i] = hashAssign[i]
+	// }
+
+	// var circuit kdcServerKey
+	// circuit := Sha2Wrapper{
+	// 	In: make([]frontend.Variable, inByteLen),
+	// }
+
+	data, err := ProofWithBackend(backend, compile, &Sha2Wrapper{In: make([]uints.U8, len(bts))}, &witness, ecc.BN254)
 
 	return data, err
 }
@@ -171,6 +221,229 @@ func EvaluateMimc(backend string, compile bool, in []big.Int, hash []byte) (map[
 	return data, err
 }
 
+// execution of circuit function of program
+func EvaluateZkOpen(backend string, compile bool, in []big.Int, hash []byte, plain, cipher string) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateZkOpen")
+
+	// compute parity checksum on input
+	var parityBytes [16]byte
+	for i := 0; i < len(in); i++ {
+		for j := 0; j < len(parityBytes); j++ {
+			parityBytes[j] = parityBytes[j] ^ in[i].Bytes()[:16][j] ^ in[i].Bytes()[16:][j]
+		}
+	}
+
+	// hash dummy data evaluation
+	t1 := time.Now()
+	plainBs, _ := hex.DecodeString(plain)
+	sha256.Sum256(plainBs)
+	fmt.Println("hash comptutaion took:", time.Since(t1))
+	// t2 := time.Since(t1)
+
+	// add mask
+	mask := "4647eb76ffd794580046acf096d6b7a2"
+	maskBytes, _ := hex.DecodeString(mask)
+	for j := 0; j < len(parityBytes); j++ {
+		parityBytes[j] = parityBytes[j] ^ maskBytes[j]
+	}
+
+	byteSlice, _ := hex.DecodeString(plain)
+	plainByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(cipher)
+	cipherByteLen := len(byteSlice)
+
+	parity := hex.EncodeToString(parityBytes[:])
+	maskAssign := StrToIntSlice(mask, true)
+	parityAssign := StrToIntSlice(parity, true)
+	plainAssign := StrToIntSlice(plain, true)
+	cipherAssign := StrToIntSlice(cipher, true)
+	inByteLen := len(in)
+
+	log.Debug().Str("length", strconv.Itoa(inByteLen)).Msg("zkOpen input size")
+
+	assignment := zkOpenWrapper{
+		InMap:      make([][32]frontend.Variable, inByteLen),
+		Hash:       hash,
+		Mask:       [16]frontend.Variable{},
+		Parity:     [16]frontend.Variable{},
+		Ciphertext: make([]frontend.Variable, cipherByteLen),
+		Plaintext:  make([]frontend.Variable, plainByteLen),
+	}
+
+	for i := 0; i < 16; i++ {
+		assignment.Mask[i] = maskAssign[i]
+	}
+	for i := 0; i < inByteLen; i++ {
+		byteSlice := in[i].Bytes()
+		for j := 0; j < len(byteSlice); j++ {
+			assignment.InMap[i][j] = int(byteSlice[j])
+		}
+	}
+	for i := 0; i < 16; i++ {
+		assignment.Parity[i] = parityAssign[i]
+	}
+	for i := 0; i < cipherByteLen; i++ {
+		assignment.Ciphertext[i] = cipherAssign[i]
+	}
+	for i := 0; i < plainByteLen; i++ {
+		assignment.Plaintext[i] = plainAssign[i]
+	}
+
+	// var circuit kdcServerKey
+	circuit := zkOpenWrapper{
+		InMap:      make([][32]frontend.Variable, inByteLen),
+		Ciphertext: make([]frontend.Variable, cipherByteLen),
+		Plaintext:  make([]frontend.Variable, plainByteLen),
+	}
+
+	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
+// execution of circuit function of program
+func EvaluateZkOpen2(backend string, compile bool, in []big.Int, hash []byte, plain, cipher string) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateZkOpen2")
+
+	// dummy mask
+	mask := "4647eb76ffd794580046acf096d6b7a2"
+	maskBytes, _ := hex.DecodeString(mask)
+
+	// compute parity checksum on input
+	var parityBytes [16]byte
+	for i := 0; i < len(in); i++ {
+		for j := 0; j < len(parityBytes); j++ {
+			parityBytes[j] = (parityBytes[j] ^ (in[i].Bytes()[:16][j])&maskBytes[j]) ^ (in[i].Bytes()[16:][j] & maskBytes[j])
+		}
+	}
+
+	// hash dummy data evaluation
+	t1 := time.Now()
+	plainBs, _ := hex.DecodeString(plain)
+	sha256.Sum256(plainBs)
+	fmt.Println("hash computation took:", time.Since(t1))
+	// t2 := time.Since(t1)
+
+	// add mask
+	// mask := "4647eb76ffd794580046acf096d6b7a2"
+	// maskBytes, _ := hex.DecodeString(mask)
+	// for j := 0; j < len(parityBytes); j++ {
+	// 	parityBytes[j] = parityBytes[j] ^ maskBytes[j]
+	// }
+
+	byteSlice, _ := hex.DecodeString(plain)
+	plainByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(cipher)
+	cipherByteLen := len(byteSlice)
+
+	parity := hex.EncodeToString(parityBytes[:])
+	// maskAssign := StrToIntSlice(mask, true)
+	parityAssign := StrToIntSlice(parity, true)
+	plainAssign := StrToIntSlice(plain, true)
+	cipherAssign := StrToIntSlice(cipher, true)
+	inByteLen := len(in)
+
+	maskBigInt := new(big.Int).SetBytes(maskBytes)
+
+	log.Debug().Str("length", strconv.Itoa(inByteLen)).Msg("zkOpen input size")
+
+	assignment := zkOpenWrapper2{
+		InMap:      make([][32]frontend.Variable, inByteLen),
+		Hash:       hash,
+		DummyMask:  maskBigInt.String(),
+		Parity:     [16]frontend.Variable{},
+		Ciphertext: make([]frontend.Variable, cipherByteLen),
+		Plaintext:  make([]frontend.Variable, plainByteLen),
+	}
+
+	// for i := 0; i < 16; i++ {
+	// 	assignment.DummyMask[i] = maskAssign[i]
+	// }
+	for i := 0; i < inByteLen; i++ {
+		byteSlice := in[i].Bytes()
+		for j := 0; j < len(byteSlice); j++ {
+			assignment.InMap[i][j] = int(byteSlice[j])
+		}
+	}
+	for i := 0; i < 16; i++ {
+		assignment.Parity[i] = parityAssign[i]
+	}
+	for i := 0; i < cipherByteLen; i++ {
+		assignment.Ciphertext[i] = cipherAssign[i]
+	}
+	for i := 0; i < plainByteLen; i++ {
+		assignment.Plaintext[i] = plainAssign[i]
+	}
+
+	// var circuit kdcServerKey
+	circuit := zkOpenWrapper2{
+		InMap:      make([][32]frontend.Variable, inByteLen),
+		Ciphertext: make([]frontend.Variable, cipherByteLen),
+		Plaintext:  make([]frontend.Variable, plainByteLen),
+	}
+
+	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
+// execution of circuit function of program
+func EvaluateNaiveOpen(backend string, compile bool, in []big.Int, hash []byte, plain, cipher string) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateNaiveOpen")
+
+	// hash dummy data evaluation
+	t1 := time.Now()
+	plainBs, _ := hex.DecodeString(plain)
+	sha256.Sum256(plainBs)
+	fmt.Println("hash computation took:", time.Since(t1))
+
+	byteSlice, _ := hex.DecodeString(plain)
+	plainByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(cipher)
+	cipherByteLen := len(byteSlice)
+
+	plainAssign := StrToIntSlice(plain, true)
+	cipherAssign := StrToIntSlice(cipher, true)
+	inByteLen := len(in)
+
+	log.Debug().Str("length", strconv.Itoa(inByteLen)).Msg("zkOpen input size")
+
+	assignment := naiveOpenWrapper{
+		InMap:      make([][32]frontend.Variable, inByteLen),
+		Hash:       hash,
+		Ciphertext: make([]frontend.Variable, cipherByteLen),
+		Plaintext:  make([]frontend.Variable, plainByteLen),
+	}
+
+	for i := 0; i < inByteLen; i++ {
+		byteSlice := in[i].Bytes()
+		for j := 0; j < len(byteSlice); j++ {
+			assignment.InMap[i][j] = int(byteSlice[j])
+		}
+	}
+
+	for i := 0; i < cipherByteLen; i++ {
+		assignment.Ciphertext[i] = cipherAssign[i]
+	}
+	for i := 0; i < plainByteLen; i++ {
+		assignment.Plaintext[i] = plainAssign[i]
+	}
+
+	// var circuit kdcServerKey
+	circuit := naiveOpenWrapper{
+		InMap:      make([][32]frontend.Variable, inByteLen),
+		Ciphertext: make([]frontend.Variable, cipherByteLen),
+		Plaintext:  make([]frontend.Variable, plainByteLen),
+	}
+
+	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
 func EvaluateAES128(backend string, compile bool) (map[string]time.Duration, error) {
 
 	log.Debug().Msg("EvaluateAES128")
@@ -237,8 +510,8 @@ func EvaluateAuthTag(backend string, compile bool) (map[string]time.Duration, er
 	ivCounter := sb.String()
 
 	zeros := "00000000000000000000000000000000"
-	ecb0 := "a5cd49b7c29ad21fedbcedc01e0f13e8"
-	ecbk := "1c9c7c260c39bcb8dcfa5fbc9330b9fa"
+	ecb1 := "a5cd49b7c29ad21fedbcedc01e0f13e8"
+	ecb0 := "1c9c7c260c39bcb8dcfa5fbc9330b9fa"
 
 	// convert to bytes
 	byteSlice, _ := hex.DecodeString(key)
@@ -247,25 +520,25 @@ func EvaluateAuthTag(backend string, compile bool) (map[string]time.Duration, er
 	ivCounterByteLen := len(dHSSlice)
 	byteSlice, _ = hex.DecodeString(zeros)
 	zerosByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(ecb1)
+	ecb1ByteLen := len(byteSlice)
 	byteSlice, _ = hex.DecodeString(ecb0)
 	ecb0ByteLen := len(byteSlice)
-	byteSlice, _ = hex.DecodeString(ecbk)
-	ecbkByteLen := len(byteSlice)
 
 	// witness definition
 	keyAssign := StrToIntSlice(key, true)
 	ivCounterAssign := StrToIntSlice(ivCounter, true)
 	zerosAssign := StrToIntSlice(zeros, true)
+	ecb1Assign := StrToIntSlice(ecb1, true)
 	ecb0Assign := StrToIntSlice(ecb0, true)
-	ecbkAssign := StrToIntSlice(ecbk, true)
 
 	// witness values preparation
 	assignment := AuthTagWrapper{
 		Key:       [16]frontend.Variable{},
 		IvCounter: [16]frontend.Variable{},
 		Zeros:     [16]frontend.Variable{},
+		ECB1:      [16]frontend.Variable{},
 		ECB0:      [16]frontend.Variable{},
-		ECBK:      [16]frontend.Variable{},
 	}
 
 	for i := 0; i < keyByteLen; i++ {
@@ -277,11 +550,11 @@ func EvaluateAuthTag(backend string, compile bool) (map[string]time.Duration, er
 	for i := 0; i < zerosByteLen; i++ {
 		assignment.Zeros[i] = zerosAssign[i]
 	}
-	for i := 0; i < ecbkByteLen; i++ {
-		assignment.ECBK[i] = ecbkAssign[i]
-	}
 	for i := 0; i < ecb0ByteLen; i++ {
 		assignment.ECB0[i] = ecb0Assign[i]
+	}
+	for i := 0; i < ecb1ByteLen; i++ {
+		assignment.ECB1[i] = ecb1Assign[i]
 	}
 
 	// var circuit kdcServerKey

@@ -37,8 +37,8 @@ func EvaluateOracle(backend string, compile bool) (map[string]time.Duration, err
 	// authtag params
 	iv := "a54613bf2801a84ce693d0a0"
 	zeros := "00000000000000000000000000000000"
-	ecb0 := "a5cd49b7c29ad21fedbcedc01e0f13e8"
-	ecbk := "1c9c7c260c39bcb8dcfa5fbc9330b9fa"
+	ecb1 := "a5cd49b7c29ad21fedbcedc01e0f13e8"
+	ecb0 := "1c9c7c260c39bcb8dcfa5fbc9330b9fa"
 	// record params
 	chipherChunks := "419a031754a4897806533c6020e9130f6088747b9f9a1e1eba4cb0518a6d5692"
 	plainChunks := "302c353631204575726f227d2c227072696365223a2233383030322e32222c22"
@@ -77,10 +77,10 @@ func EvaluateOracle(backend string, compile bool) (map[string]time.Duration, err
 	ivCounterByteLen := len(byteSlice)
 	byteSlice, _ = hex.DecodeString(zeros)
 	zerosByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(ecb1)
+	ecb1ByteLen := len(byteSlice)
 	byteSlice, _ = hex.DecodeString(ecb0)
 	ecb0ByteLen := len(byteSlice)
-	byteSlice, _ = hex.DecodeString(ecbk)
-	ecbkByteLen := len(byteSlice)
 	// record to bytes
 	byteSlice, _ = hex.DecodeString(iv)
 	ivByteLen := len(byteSlice)
@@ -107,8 +107,8 @@ func EvaluateOracle(backend string, compile bool) (map[string]time.Duration, err
 	// witness definition authtag
 	ivCounterAssign := StrToIntSlice(ivCounter, true)
 	zerosAssign := StrToIntSlice(zeros, true)
+	ecb1Assign := StrToIntSlice(ecb1, true)
 	ecb0Assign := StrToIntSlice(ecb0, true)
-	ecbkAssign := StrToIntSlice(ecbk, true)
 	// witness definition record
 	ivAssign := StrToIntSlice(iv, true)
 	chipherChunksAssign := StrToIntSlice(chipherChunks, true)
@@ -126,8 +126,8 @@ func EvaluateOracle(backend string, compile bool) (map[string]time.Duration, err
 		// authtag params
 		IvCounter: [16]frontend.Variable{},
 		Zeros:     [16]frontend.Variable{},
+		ECB1:      [16]frontend.Variable{},
 		ECB0:      [16]frontend.Variable{},
-		ECBK:      [16]frontend.Variable{},
 		// record pararms
 		PlainChunks:    make([]frontend.Variable, plainChunksByteLen),
 		Iv:             [12]frontend.Variable{},
@@ -164,11 +164,11 @@ func EvaluateOracle(backend string, compile bool) (map[string]time.Duration, err
 	for i := 0; i < zerosByteLen; i++ {
 		assignment.Zeros[i] = zerosAssign[i]
 	}
-	for i := 0; i < ecbkByteLen; i++ {
-		assignment.ECBK[i] = ecbkAssign[i]
-	}
 	for i := 0; i < ecb0ByteLen; i++ {
 		assignment.ECB0[i] = ecb0Assign[i]
+	}
+	for i := 0; i < ecb1ByteLen; i++ {
+		assignment.ECB1[i] = ecb1Assign[i]
 	}
 	// record assign
 	for i := 0; i < plainChunksByteLen; i++ {

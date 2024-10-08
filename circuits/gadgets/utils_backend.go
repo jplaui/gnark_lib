@@ -17,6 +17,8 @@ limitations under the License.
 package gadgets
 
 import (
+	"bytes"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -72,6 +74,15 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 	data["compile"] = elapsed
 
+	// measure byte size
+	var buf bytes.Buffer
+	bytesWritten, err := ccs.WriteTo(&buf)
+	if err != nil {
+		log.Error().Msg("ccs serialization error")
+		return nil, err
+	}
+	log.Debug().Str("written", strconv.FormatInt(bytesWritten, 10)).Msg("compiled constraint system bytes")
+
 	// kzg setup if using plonk
 	if backend == "plonk" {
 		scs := ccs.(*cs.SparseR1CS)
@@ -86,6 +97,16 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		elapsed := time.Since(start)
 		data["compile"] = elapsed
+
+		// measure byte size
+		var bufExtra bytes.Buffer
+		bytesWritten, err := srs.WriteTo(&bufExtra)
+		if err != nil {
+			log.Error().Msg("srs serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written srs", strconv.FormatInt(bytesWritten, 10)).Msg("compiled constraint system bytes")
+
 	}
 
 	if compile {
@@ -108,6 +129,22 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		data["setup"] = elapsed
 
+		// measure byte size
+		var buf1 bytes.Buffer
+		bytesWritten1, err := pk.WriteTo(&buf1)
+		if err != nil {
+			log.Error().Msg("ccs serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.FormatInt(bytesWritten1, 10)).Msg("prover key bytes")
+		var buf2 bytes.Buffer
+		bytesWritten2, err := vk.WriteTo(&buf2)
+		if err != nil {
+			log.Error().Msg("ccs serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.FormatInt(bytesWritten2, 10)).Msg("verifier key bytes")
+
 		// prove
 		start = time.Now()
 		proof, err := groth16.Prove(ccs, pk, witness)
@@ -120,8 +157,25 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		data["prove"] = elapsed
 
+		// measure bytes
+		var buf3 bytes.Buffer
+		bytesWritten3, err := proof.WriteTo(&buf3)
+		if err != nil {
+			log.Error().Msg("proof serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.FormatInt(bytesWritten3, 10)).Msg("proof bytes")
+
 		// generate public witness
 		publicWitness, _ := witness.Public()
+
+		// measure bytes
+		witnessBytes, err := publicWitness.MarshalBinary()
+		if err != nil {
+			log.Error().Msg("witness marshal binary error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.Itoa(len(witnessBytes)/8)).Msg("witness bytes")
 
 		// verification
 		start = time.Now()
@@ -149,6 +203,22 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		data["setup"] = elapsed
 
+		// measure byte size
+		var buf1 bytes.Buffer
+		bytesWritten1, err := pk.WriteTo(&buf1)
+		if err != nil {
+			log.Error().Msg("ccs serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.FormatInt(bytesWritten1, 10)).Msg("prover key bytes")
+		var buf2 bytes.Buffer
+		bytesWritten2, err := vk.WriteTo(&buf2)
+		if err != nil {
+			log.Error().Msg("ccs serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.FormatInt(bytesWritten2, 10)).Msg("verifier key bytes")
+
 		// prove
 		start = time.Now()
 		proof, err := plonk.Prove(ccs, pk, witness)
@@ -161,8 +231,26 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		data["prove"] = elapsed
 
+		// measure bytes
+		var buf3 bytes.Buffer
+		bytesWritten3, err := proof.WriteTo(&buf3)
+		if err != nil {
+			log.Error().Msg("proof serialization error")
+			return nil, err
+		}
+		log.Debug().Str("written", strconv.FormatInt(bytesWritten3, 10)).Msg("proof bytes")
+
 		// generate public witness
 		publicWitness, _ := witness.Public()
+
+		// measure bytes
+		witnessBytes, err := publicWitness.MarshalBinary()
+		if err != nil {
+			log.Error().Msg("witness marshal binary error")
+			return nil, err
+		}
+		// fmt.Println("witnessBytes:", witnessBytes)
+		log.Debug().Str("written", strconv.Itoa(len(witnessBytes)/8)).Msg("witness bytes")
 
 		// verify
 		start = time.Now()
