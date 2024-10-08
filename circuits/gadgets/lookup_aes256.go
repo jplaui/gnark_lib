@@ -1,8 +1,6 @@
 package gadgets
 
 import (
-	"math"
-
 	"github.com/consensys/gnark/frontend"
 )
 
@@ -18,13 +16,17 @@ type LookUpAES256Wrapper struct {
 func (circuit *LookUpAES256Wrapper) Define(api frontend.API) error {
 	// init aes gadget
 	aes := NewLookUpAES256(api)
-	counter := circuit.Counter
+	counter := circuit.ChunkIndex
 	var counterBlock [16]frontend.Variable
+
+	inputSize := len(circuit.Plaintext)
+	numberBlocks := int(inputSize / 16)
+	var b int
 
 	for i := 0; i < 12; i++ {
 		counterBlock[i] = circuit.Nonce[i]
 	}
-	for b := 0; b < BLOCKS; b++ {
+	for b = 0; b < numberBlocks; b++ {
 		aes.createIV(counter, counterBlock[:])
 		// encrypt counter under key
 		keystream := aes.Encrypt(circuit.Key, counterBlock)
@@ -33,10 +35,10 @@ func (circuit *LookUpAES256Wrapper) Define(api frontend.API) error {
 			api.AssertIsEqual(circuit.Ciphertext[b*16+i], aes.VariableXor(keystream[i], circuit.Plaintext[b*16+i], 8))
 		}
 		counter = api.Add(counter, 1)
-		api.AssertIsLessOrEqual(counter, math.MaxUint32)
+		// api.AssertIsLessOrEqual(counter, math.MaxUint32)
 	}
 
-	api.AssertIsEqual(counter, api.Add(circuit.Counter, BLOCKS))
+	// api.AssertIsEqual(counter, api.Add(circuit.Counter, BLOCKS))
 	return nil
 }
 

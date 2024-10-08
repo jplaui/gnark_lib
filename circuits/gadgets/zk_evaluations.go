@@ -622,6 +622,135 @@ func EvaluateGCM(backend string, compile bool, key string, chunkIndex int, nonce
 	return data, err
 }
 
+func EvaluateGCM2(backend string, compile bool, key string, chunkIndex int, nonce, plaintext, ciphertext1 string) (map[string]time.Duration, error) {
+
+	log.Debug().Msg("EvaluateGCM2")
+
+	// convert to bytes
+	byteSlice, _ := hex.DecodeString(key)
+	// keyByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(nonce)
+	// nonceByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(plaintext)
+	ptByteLen := len(byteSlice)
+	byteSlice, _ = hex.DecodeString(ciphertext1)
+	ct1ByteLen := len(byteSlice)
+
+	log.Debug().Str("length", strconv.Itoa(ptByteLen)).Msg("GCM2 computation of length bytes")
+
+	// witness definition
+	// keyAssign := StrToIntSlice(key, true)
+	// nonceAssign := StrToIntSlice(nonce, true)
+	// ptAssign := StrToIntSlice(plaintext, true)
+	// ctAssign := StrToIntSlice(ciphertext, true)
+
+	// key := "7E24067817FAE0D743D6CE1F32539163"
+	// plaintext := "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F"
+	// ciphertext := "5104A106168A72D9790D41EE8EDAD388EB2E1EFC46DA57C8FCE630DF9141BE28"
+	// Nonce := "006CB6DBC0543B59DA48D90B"
+	// Counter := 1
+
+	// calculate ciphertext ourselves
+	// block, err := aes.NewCipher(mustHex(key))
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// ctr := cipher.NewCTR(block, append(mustHex(nonce), binary.BigEndian.AppendUint32(nil, uint32(Counter))...))
+	// ciphertext := make([]byte, len(mustHex(plaintext)))
+	// ctr.XORKeyStream(ciphertext, mustHex(plaintext))
+
+	keyAssign := StrToIntSlice(key, true)
+	ptAssign := StrToIntSlice(plaintext, true)
+	ctAssign := StrToIntSlice(ciphertext1, true)
+	nonceAssign := StrToIntSlice(nonce, true)
+
+	// witness values preparation
+	assignment := LookUpAES128Wrapper{
+		LookUpAESWrapper{
+			Key:        make([]frontend.Variable, 16),
+			ChunkIndex: chunkIndex,
+			Nonce:      [12]frontend.Variable{},
+			Plaintext:  make([]frontend.Variable, ptByteLen),
+			Ciphertext: make([]frontend.Variable, ct1ByteLen),
+		},
+	}
+
+	// assign values here because required to use make in assignment
+	for i := 0; i < len(keyAssign); i++ {
+		assignment.Key[i] = keyAssign[i]
+	}
+	for i := 0; i < len(ptAssign); i++ {
+		assignment.Plaintext[i] = ptAssign[i]
+	}
+	for i := 0; i < len(ctAssign); i++ {
+		assignment.Ciphertext[i] = ctAssign[i]
+	}
+
+	for i := 0; i < len(nonceAssign); i++ {
+		assignment.Nonce[i] = nonceAssign[i]
+	}
+
+	// assert.CheckCircuit(&LookUpAES128Wrapper{
+	// 	LookUpAESWrapper{
+	// 		Key:        make([]frontend.Variable, 16),
+	// 		ChunkIndex:    chunkIndex,
+	// 		Nonce:      [12]frontend.Variable{},
+	// 		Plaintext:  [BLOCKS * 16]frontend.Variable{},
+	// 		Ciphertext: [BLOCKS * 16]frontend.Variable{},
+	// 	},
+	// }, test.WithValidAssignment(&assignment))
+
+	// // witness values preparation
+	// assignment := GCMWrapper{
+	// 	PlainChunks:  make([]frontend.Variable, ptByteLen),
+	// 	CipherChunks: make([]frontend.Variable, ctByteLen),
+	// 	ChunkIndex:   chunkIndex, // frontend.Variable(chunkIdx),
+	// 	Iv:           [12]frontend.Variable{},
+	// 	Key:          [16]frontend.Variable{}, // make([]frontend.Variable, 16), //[16]frontend.Variable{},
+	// }
+
+	// assign values here because required to use make in assignment
+	// for i := 0; i < ptByteLen; i++ {
+	// 	assignment.PlainChunks[i] = ptAssign[i]
+	// }
+	// for i := 0; i < ctByteLen; i++ {
+	// 	assignment.CipherChunks[i] = ctAssign[i]
+	// }
+	// for i := 0; i < nonceByteLen; i++ {
+	// 	assignment.Iv[i] = nonceAssign[i]
+	// }
+	// for i := 0; i < keyByteLen; i++ {
+	// 	assignment.Key[i] = keyAssign[i]
+	// }
+
+	// var circuit kdcServerKey
+	circuit := LookUpAES128Wrapper{
+		LookUpAESWrapper{
+			Key: make([]frontend.Variable, 16),
+			// 		ChunkIndex:    chunkIndex,
+			Nonce: [12]frontend.Variable{},
+			// 		Plaintext:  [BLOCKS * 16]frontend.Variable{},
+			// 		Ciphertext: [BLOCKS * 16]frontend.Variable{},
+			// 	},
+			Plaintext:  make([]frontend.Variable, ptByteLen),
+			Ciphertext: make([]frontend.Variable, ptByteLen),
+			ChunkIndex: chunkIndex,
+		},
+	}
+
+	data, err := ProofWithBackend(backend, compile, &circuit, &assignment, ecc.BN254)
+
+	return data, err
+}
+
+func mustHex(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
 func EvaluateKdc(backend string, compile bool) (map[string]time.Duration, error) {
 
 	log.Debug().Msg("EvaluateKdc")

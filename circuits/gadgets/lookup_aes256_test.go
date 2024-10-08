@@ -20,6 +20,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -39,6 +40,9 @@ func TestLookUpAES256(t *testing.T) {
 	Nonce := "00FAAC24C1585EF15A43D875"
 	Counter := 1
 
+	byteSlice, _ := hex.DecodeString(plaintext)
+	ptByteLen := len(byteSlice)
+
 	// calculate ciphertext ourselves
 	block, err := aes.NewCipher(mustHex(key))
 	if err != nil {
@@ -57,10 +61,12 @@ func TestLookUpAES256(t *testing.T) {
 	assignment := LookUpAES256Wrapper{
 		LookUpAESWrapper{
 			Key:        make([]frontend.Variable, 32),
-			Counter:    Counter,
+			ChunkIndex: Counter,
 			Nonce:      [12]frontend.Variable{},
-			Plaintext:  [BLOCKS * 16]frontend.Variable{},
-			Ciphertext: [BLOCKS * 16]frontend.Variable{},
+			Plaintext:  make([]frontend.Variable, ptByteLen),
+			Ciphertext: make([]frontend.Variable, ptByteLen),
+			// Plaintext:  [BLOCKS * 16]frontend.Variable{},
+			// Ciphertext: [BLOCKS * 16]frontend.Variable{},
 		},
 	}
 
@@ -82,10 +88,12 @@ func TestLookUpAES256(t *testing.T) {
 	assert.CheckCircuit(&LookUpAES256Wrapper{
 		LookUpAESWrapper{
 			Key:        make([]frontend.Variable, 32),
-			Counter:    Counter,
+			ChunkIndex: Counter,
 			Nonce:      [12]frontend.Variable{},
-			Plaintext:  [BLOCKS * 16]frontend.Variable{},
-			Ciphertext: [BLOCKS * 16]frontend.Variable{},
+			Plaintext:  make([]frontend.Variable, ptByteLen),
+			Ciphertext: make([]frontend.Variable, ptByteLen),
+			// Plaintext:  [BLOCKS * 16]frontend.Variable{},
+			// Ciphertext: [BLOCKS * 16]frontend.Variable{},
 		},
 	}, test.WithValidAssignment(&assignment))
 }

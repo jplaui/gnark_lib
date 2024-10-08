@@ -41,9 +41,12 @@ func TestLookUpAES128(t *testing.T) {
 	Nonce := "006CB6DBC0543B59DA48D90B"
 	Counter := 1
 
+	byteSlice, _ := hex.DecodeString(plaintext)
+	ptByteLen := len(byteSlice)
+
 	fmt.Println("key:", key)
-	fmt.Println("plaintext:", key)
-	fmt.Println("nonce:", key)
+	// fmt.Println("plaintext:", key)
+	// fmt.Println("nonce:", key)
 
 	// calculate ciphertext ourselves
 	block, err := aes.NewCipher(mustHex(key))
@@ -63,10 +66,12 @@ func TestLookUpAES128(t *testing.T) {
 	assignment := LookUpAES128Wrapper{
 		LookUpAESWrapper{
 			Key:        make([]frontend.Variable, 16),
-			Counter:    Counter,
+			ChunkIndex: Counter,
 			Nonce:      [12]frontend.Variable{},
-			Plaintext:  [BLOCKS * 16]frontend.Variable{},
-			Ciphertext: [BLOCKS * 16]frontend.Variable{},
+			Plaintext:  make([]frontend.Variable, ptByteLen),
+			Ciphertext: make([]frontend.Variable, ptByteLen),
+			// Plaintext:  [BLOCKS * 16]frontend.Variable{},
+			// Ciphertext: [BLOCKS * 16]frontend.Variable{},
 		},
 	}
 
@@ -88,10 +93,12 @@ func TestLookUpAES128(t *testing.T) {
 	assert.CheckCircuit(&LookUpAES128Wrapper{
 		LookUpAESWrapper{
 			Key:        make([]frontend.Variable, 16),
-			Counter:    Counter,
+			ChunkIndex: Counter,
 			Nonce:      [12]frontend.Variable{},
-			Plaintext:  [BLOCKS * 16]frontend.Variable{},
-			Ciphertext: [BLOCKS * 16]frontend.Variable{},
+			Plaintext:  make([]frontend.Variable, ptByteLen),
+			Ciphertext: make([]frontend.Variable, ptByteLen),
+			// Plaintext:  [BLOCKS * 16]frontend.Variable{},
+			// Ciphertext: [BLOCKS * 16]frontend.Variable{},
 		},
 	}, test.WithValidAssignment(&assignment))
 }
@@ -112,13 +119,13 @@ func LookUpStrToIntSlice(inputData string, hexRepresentation bool) []int {
 	return data
 }
 
-func mustHex(s string) []byte {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
+// func mustHex(s string) []byte {
+// 	b, err := hex.DecodeString(s)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return b
+// }
 
 func TestCompile(t *testing.T) {
 	curve := ecc.BN254.ScalarField()

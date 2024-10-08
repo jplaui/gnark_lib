@@ -8,11 +8,14 @@ import (
 const BLOCKS = 4
 
 type LookUpAESWrapper struct {
-	Key        []frontend.Variable
-	Nonce      [12]frontend.Variable
-	Counter    frontend.Variable
-	Plaintext  [BLOCKS * 16]frontend.Variable `gnark:",public"`
-	Ciphertext [BLOCKS * 16]frontend.Variable `gnark:",public"`
+	Key   []frontend.Variable
+	Nonce [12]frontend.Variable `gnark:",public"`
+	// Counter    frontend.Variable     `gnark:",public"`
+	ChunkIndex frontend.Variable   `gnark:",public"`
+	Plaintext  []frontend.Variable `gnark:",public"`
+	Ciphertext []frontend.Variable `gnark:",public"`
+	// Plaintext  [BLOCKS * 16]frontend.Variable `gnark:",public"`
+	// Ciphertext [BLOCKS * 16]frontend.Variable `gnark:",public"`
 }
 
 type LookUpAESGadget struct {

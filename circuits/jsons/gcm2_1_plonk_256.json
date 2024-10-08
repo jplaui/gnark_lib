@@ -1,12 +1,12 @@
 {
  "backend": "plonk",
- "data_size": "32",
+ "data_size": "256",
  "iterations": "1",
- "time_compile_mean": "16.199",
+ "time_compile_mean": "8.087",
  "time_compile_standard_deviation": "0.000",
- "time_prove_mean": "9.631",
+ "time_prove_mean": "5.306",
  "time_prove_standard_deviation": "0.000",
- "time_setup_mean": "1.972",
+ "time_setup_mean": "1.340",
  "time_setup_standard_deviation": "0.000",
  "time_verify_mean": "0.002",
  "time_verify_standard_deviation": "0.000"

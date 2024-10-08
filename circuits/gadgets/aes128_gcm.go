@@ -23,7 +23,7 @@ import (
 // AES gcm testing
 type GCMWrapper struct {
 	Key          [16]frontend.Variable
-	PlainChunks  []frontend.Variable
+	PlainChunks  []frontend.Variable   `gnark:",public"`
 	Iv           [12]frontend.Variable `gnark:",public"`
 	ChunkIndex   frontend.Variable     `gnark:",public"`
 	CipherChunks []frontend.Variable   `gnark:",public"`

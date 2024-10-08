@@ -17,8 +17,6 @@ limitations under the License.
 package gadgets
 
 import (
-	"math"
-
 	"github.com/consensys/gnark/frontend"
 )
 
@@ -30,7 +28,11 @@ func (circuit *LookUpAES128Wrapper) Define(api frontend.API) error {
 
 	// init aes gadget
 	aes := NewLookUpAES128(api)
-	counter := circuit.Counter
+	// counter := circuit.ChunkIndex
+
+	inputSize := len(circuit.Plaintext)
+	numberBlocks := int(inputSize / 16)
+	var epoch int
 
 	var counterBlock [16]frontend.Variable
 
@@ -38,20 +40,52 @@ func (circuit *LookUpAES128Wrapper) Define(api frontend.API) error {
 		counterBlock[i] = circuit.Nonce[i]
 	}
 
-	for b := 0; b < BLOCKS; b++ {
-		aes.createIV(counter, counterBlock[:])
+	for epoch = 0; epoch < numberBlocks; epoch++ {
+
+		idx := api.Add(circuit.ChunkIndex, frontend.Variable(epoch))
+		eIndex := epoch * 16
+
+		// var ptBlock [16]frontend.Variable
+		// var ctBlock [16]frontend.Variable
+
+		// for j := 0; j < 16; j++ {
+		// 	ptBlock[j] = circuit.Plaintext[eIndex+j]
+		// 	ctBlock[j] = circuit.Ciphertext[eIndex+j]
+		// }
+
+		aes.createIV(idx, counterBlock[:])
+		// ivCounter := GetIV(api, circuit.Nonce, idx)
 		// encrypt counter under key
 
 		keystream := aes.Encrypt(circuit.Key, counterBlock)
 
 		for i := 0; i < 16; i++ {
-			api.AssertIsEqual(circuit.Ciphertext[b*16+i], aes.VariableXor(keystream[i], circuit.Plaintext[b*16+i], 8))
+			api.AssertIsEqual(circuit.Ciphertext[eIndex+i], aes.VariableXor(keystream[i], circuit.Plaintext[eIndex+i], 8))
 		}
-		counter = api.Add(counter, 1)
-		api.AssertIsLessOrEqual(counter, math.MaxUint32)
+		// counter = api.Add(counter, 1)
+		// api.AssertIsLessOrEqual(counter, math.MaxUint32)
 	}
-	api.AssertIsEqual(counter, api.Add(circuit.Counter, BLOCKS))
+	// api.AssertIsEqual(counter, api.Add(circuit.Counter, numberBlocks))
 	return nil
+}
+
+func GetIV(api frontend.API, nonce [12]frontend.Variable, ctr frontend.Variable) [16]frontend.Variable {
+
+	var out [16]frontend.Variable
+	var i int
+	for i = 0; i < len(nonce); i++ {
+		out[i] = nonce[i]
+	}
+	bits := api.ToBinary(ctr, 32)
+	remain := 12
+	for j := 3; j >= 0; j-- {
+		start := 8 * j
+		// little endian order chunk parsing from back to front
+		out[remain] = api.FromBinary(bits[start : start+8]...)
+		remain += 1
+	}
+
+	return out
 }
 
 type LookUpAES128 struct {

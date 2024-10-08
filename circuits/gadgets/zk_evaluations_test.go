@@ -63,6 +63,7 @@ var (
 	aes128_circuit    bool
 	authtag_circuit   bool
 	gcm_circuit       bool
+	gcm_circuit2      bool
 	kdc_circuit       bool
 	record_circuit    bool
 	xor_circuit       bool
@@ -110,6 +111,9 @@ func TestMain(m *testing.M) {
 
 	// individual evaluation flags
 	flag.BoolVar(&gcm_circuit, "gcm", false, "evaluates gcm circuit")
+
+	// individual evaluation flags
+	flag.BoolVar(&gcm_circuit2, "gcm2", false, "evaluates gcm aes128 with lookups")
 
 	// individual evaluation flags
 	flag.BoolVar(&kdc_circuit, "kdc", false, "evaluates kdc circuit")
@@ -414,6 +418,46 @@ func TestAll(t *testing.T) {
 
 		AddStats(data, s, true)
 		filename := "gcm_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		StoreM(data, "./jsons/", filename)
+	}
+
+	// gcm evaluation
+	if gcm_circuit2 {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(iterations)
+		data["backend"] = ps
+		if byte_size != 0 {
+			data["data_size"] = strconv.Itoa(byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		// generate data, encrypting zeros
+		key, _ := hex.DecodeString("ab72c77b97cb5fe9a382d9fe81ffdbed")
+		plaintext := make([]byte, byte_size)
+		ivBytes, _ := hex.DecodeString("54cc7dc2c37ec006bcc6d1da")
+
+		block, _ := aes.NewCipher(key)
+		nonce := ivBytes
+		aesgcm, _ := cipher.NewGCM(block)
+		ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)[:byte_size]
+
+		var s []map[string]time.Duration
+		for i := iterations; i > 0; i-- {
+			data, err := EvaluateGCM2(ps, compile, hex.EncodeToString(key), 2, hex.EncodeToString(nonce), hex.EncodeToString(plaintext), hex.EncodeToString(ciphertext))
+			if err != nil {
+				log.Error().Msg("EvaluateGCM2()")
+			}
+			s = append(s, data)
+		}
+
+		// return if only interested in circuit constraints
+		if compile {
+			return
+		}
+
+		AddStats(data, s, true)
+		filename := "gcm2_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
 		StoreM(data, "./jsons/", filename)
 	}
 

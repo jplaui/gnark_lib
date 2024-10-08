@@ -110,6 +110,7 @@ func main() {
 
 	// individual evaluation flags
 	gcm_circuit := flag.Bool("gcm", false, "evaluates gcm circuit")
+	gcm_circuit2 := flag.Bool("gcm2", false, "evaluates gcm using aes128 lookups circuit")
 
 	// individual evaluation flags
 	kdc_circuit := flag.Bool("kdc", false, "evaluates kdc circuit")
@@ -864,6 +865,46 @@ func main() {
 
 		g.AddStats(data, s, true)
 		filename := "gcm_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
+		g.StoreM(data, "./jsons/", filename)
+	}
+
+	// gcm2 evaluation
+	if *gcm_circuit2 {
+		data := map[string]string{}
+		data["iterations"] = strconv.Itoa(*iterations)
+		data["backend"] = *ps
+		if *byte_size != 0 {
+			data["data_size"] = strconv.Itoa(*byte_size)
+		} else {
+			data["data_size"] = "default"
+		}
+
+		// generate data, encrypting zeros
+		key, _ := hex.DecodeString("ab72c77b97cb5fe9a382d9fe81ffdbed")
+		plaintext := make([]byte, *byte_size)
+		ivBytes, _ := hex.DecodeString("54cc7dc2c37ec006bcc6d1da")
+
+		block, _ := aes.NewCipher(key)
+		nonce := ivBytes
+		aesgcm, _ := cipher.NewGCM(block)
+		ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)[:*byte_size]
+
+		var s []map[string]time.Duration
+		for i := *iterations; i > 0; i-- {
+			data, err := g.EvaluateGCM2(*ps, *compile, hex.EncodeToString(key), 2, hex.EncodeToString(nonce), hex.EncodeToString(plaintext), hex.EncodeToString(ciphertext))
+			if err != nil {
+				log.Error().Msg("g.EvaluateGCM2()")
+			}
+			s = append(s, data)
+		}
+
+		// return if only interested in circuit constraints
+		if *compile {
+			return
+		}
+
+		g.AddStats(data, s, true)
+		filename := "gcm2_" + data["iterations"] + "_" + data["backend"] + "_" + data["data_size"]
 		g.StoreM(data, "./jsons/", filename)
 	}
 
