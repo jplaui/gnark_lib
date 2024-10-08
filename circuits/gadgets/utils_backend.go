@@ -25,11 +25,13 @@ import (
 	"github.com/consensys/gnark-crypto/kzg"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/gnark/backend/plonkfri"
+	cs "github.com/consensys/gnark/constraint/bn254"
+	"github.com/consensys/gnark/test/unsafekzg"
+
+	// "github.com/consensys/gnark/backend/plonkfri"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/test"
 )
 
 // non-gnark zk system evalaution functions
@@ -48,13 +50,14 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 	// init builders
 	var builder frontend.NewBuilder
 	var srs kzg.SRS
+	var srsLagrange kzg.SRS
 	switch backend {
 	case "groth16":
 		builder = r1cs.NewBuilder
 	case "plonk":
 		builder = scs.NewBuilder
-	case "plonkFRI":
-		builder = scs.NewBuilder
+		// case "plonkFRI":
+		// 	builder = scs.NewBuilder
 	}
 
 	// generate CompiledConstraintSystem
@@ -71,7 +74,11 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 	// kzg setup if using plonk
 	if backend == "plonk" {
-		srs, err = test.NewKZGSRS(ccs)
+		scs := ccs.(*cs.SparseR1CS)
+		srs, srsLagrange, err = unsafekzg.NewSRS(scs) // scs used before
+		// fmt.Println(srsLagrange)
+		// srs = srsTmp
+		// srs, err = test.NewKZGSRS(ccs)
 		if err != nil {
 			log.Error().Msg("test.NewKZGSRS(ccs)")
 			return nil, err
@@ -132,7 +139,7 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		// setup
 		start = time.Now()
-		pk, vk, err := plonk.Setup(ccs, srs)
+		pk, vk, err := plonk.Setup(ccs, srs, srsLagrange)
 		if err != nil {
 			log.Error().Msg("plonk.Setup")
 			return nil, err
@@ -169,46 +176,46 @@ func ProofWithBackend(backend string, compile bool, circuit frontend.Circuit, as
 
 		data["verify"] = elapsed
 
-	case "plonkFRI":
+		// case "plonkFRI":
 
-		// setup
-		start = time.Now()
-		pk, vk, err := plonkfri.Setup(ccs)
-		if err != nil {
-			log.Error().Msg("plonkfri.Setup")
-			return nil, err
-		}
-		elapsed = time.Since(start)
-		log.Debug().Str("elapsed", elapsed.String()).Msg("plonkfri.Setup time.")
+		// 	// setup
+		// 	start = time.Now()
+		// 	pk, vk, err := plonkfri.Setup(ccs)
+		// 	if err != nil {
+		// 		log.Error().Msg("plonkfri.Setup")
+		// 		return nil, err
+		// 	}
+		// 	elapsed = time.Since(start)
+		// 	log.Debug().Str("elapsed", elapsed.String()).Msg("plonkfri.Setup time.")
 
-		data["setup"] = elapsed
+		// 	data["setup"] = elapsed
 
-		// prove
-		start = time.Now()
-		correctProof, err := plonkfri.Prove(ccs, pk, witness)
-		if err != nil {
-			log.Error().Msg("plonkfri.Prove")
-			return nil, err
-		}
-		elapsed = time.Since(start)
-		log.Debug().Str("elapsed", elapsed.String()).Msg("plonkfri.Prove time.")
+		// 	// prove
+		// 	start = time.Now()
+		// 	correctProof, err := plonkfri.Prove(ccs, pk, witness)
+		// 	if err != nil {
+		// 		log.Error().Msg("plonkfri.Prove")
+		// 		return nil, err
+		// 	}
+		// 	elapsed = time.Since(start)
+		// 	log.Debug().Str("elapsed", elapsed.String()).Msg("plonkfri.Prove time.")
 
-		data["prove"] = elapsed
+		// 	data["prove"] = elapsed
 
-		// generate public witness
-		publicWitness, _ := witness.Public()
+		// 	// generate public witness
+		// 	publicWitness, _ := witness.Public()
 
-		// verify
-		start = time.Now()
-		err = plonkfri.Verify(correctProof, vk, publicWitness)
-		if err != nil {
-			log.Error().Msg("plonkfri.Verify")
-			return nil, err
-		}
-		elapsed = time.Since(start)
-		log.Debug().Str("elapsed", elapsed.String()).Msg("plonkfri.Verify time.")
+		// 	// verify
+		// 	start = time.Now()
+		// 	err = plonkfri.Verify(correctProof, vk, publicWitness)
+		// 	if err != nil {
+		// 		log.Error().Msg("plonkfri.Verify")
+		// 		return nil, err
+		// 	}
+		// 	elapsed = time.Since(start)
+		// 	log.Debug().Str("elapsed", elapsed.String()).Msg("plonkfri.Verify time.")
 
-		data["verify"] = elapsed
+		// 	data["verify"] = elapsed
 	}
 
 	return data, nil
