@@ -74,10 +74,11 @@ func (circuit *Tls13AuthTag) SetParams(key, ivCounter, zeros, ecb1, ecb0 [16]fro
 func (circuit *Tls13AuthTag) Assert() error {
 
 	// aes circuit
-	aes := NewAES128(circuit.api)
+	// aes := NewAES128(circuit.api) // for groth16
+	aes := NewLookUpAES128(circuit.api) // for lookup plonk
 
 	// encrypt zeros
-	ecb0 := aes.Encrypt(circuit.Key, circuit.Zeros)
+	ecb0 := aes.Encrypt(circuit.Key[:], circuit.Zeros)
 
 	// constraint check
 	for i := 0; i < len(circuit.ECB0); i++ {
@@ -85,7 +86,7 @@ func (circuit *Tls13AuthTag) Assert() error {
 	}
 
 	// encrypt iv||counter=0
-	ecb1 := aes.Encrypt(circuit.Key, circuit.IvCounter)
+	ecb1 := aes.Encrypt(circuit.Key[:], circuit.IvCounter)
 
 	// constraints check
 	for i := 0; i < len(circuit.ECB1); i++ {

@@ -55,6 +55,56 @@ type GCM struct {
 	aes AES
 }
 
+func NewGCMlu(api frontend.API, aes LookUpAES128) GCM2 {
+	return GCM2{api: api, aes: aes}
+}
+
+type GCM2 struct {
+	api frontend.API
+	aes LookUpAES128
+}
+
+// aes gcm encryption
+func (gcm *GCM2) Assert2(key [16]frontend.Variable, iv [12]frontend.Variable, chunkIndex frontend.Variable, plaintext, ciphertext []frontend.Variable) {
+
+	inputSize := len(plaintext)
+	numberBlocks := int(inputSize / 16)
+
+	var counterBlock [16]frontend.Variable
+	for i := 0; i < 12; i++ {
+		counterBlock[i] = iv[i]
+	}
+
+	var epoch int
+	for epoch = 0; epoch < numberBlocks; epoch++ {
+
+		idx := gcm.api.Add(chunkIndex, frontend.Variable(epoch))
+		eIndex := epoch * 16
+
+		// var ptBlock [16]frontend.Variable
+		// var ctBlock [16]frontend.Variable
+
+		// for j := 0; j < 16; j++ {
+		// 	ptBlock[j] = plaintext[eIndex+j]
+		// 	ctBlock[j] = ciphertext[eIndex+j]
+		// }
+
+		gcm.aes.createIV(idx, counterBlock[:])
+
+		// ivCounter := GetIV(gcm.api, iv, idx)
+		// intermediate := gcm.aes.Encrypt(key[:], ivCounter)
+		//ct := gcm.Xor16(intermediate, ptBlock)
+
+		keystream := gcm.aes.Encrypt(key[:], counterBlock)
+
+		// check ciphertext to plaintext constraints
+		for i := 0; i < 16; i++ {
+			// gcm.api.AssertIsEqual(ctBlock[i], ct[i])
+			gcm.api.AssertIsEqual(ciphertext[eIndex+i], gcm.aes.VariableXor(keystream[i], plaintext[eIndex+i], 8))
+		}
+	}
+}
+
 // aes gcm encryption
 func (gcm *GCM) Assert(key [16]frontend.Variable, iv [12]frontend.Variable, chunkIndex frontend.Variable, plaintext, ciphertext []frontend.Variable) {
 

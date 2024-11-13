@@ -627,11 +627,11 @@ func EvaluateGCM2(backend string, compile bool, key string, chunkIndex int, nonc
 	log.Debug().Msg("EvaluateGCM2")
 
 	// convert to bytes
-	byteSlice, _ := hex.DecodeString(key)
+	// byteSlice, _ := hex.DecodeString(key)
 	// keyByteLen := len(byteSlice)
-	byteSlice, _ = hex.DecodeString(nonce)
+	// byteSlice, _ = hex.DecodeString(nonce)
 	// nonceByteLen := len(byteSlice)
-	byteSlice, _ = hex.DecodeString(plaintext)
+	byteSlice, _ := hex.DecodeString(plaintext)
 	ptByteLen := len(byteSlice)
 	byteSlice, _ = hex.DecodeString(ciphertext1)
 	ct1ByteLen := len(byteSlice)

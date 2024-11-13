@@ -97,12 +97,15 @@ func (circuit *Tls13Record) SetParams(key [16]frontend.Variable, iv [12]frontend
 func (circuit *Tls13Record) Assert() error {
 
 	// aes circuit
-	aes := NewAES128(circuit.api)
+	//aes := NewAES128(circuit.api) // groth16
+	aes := NewLookUpAES128(circuit.api) // plonk
 
-	gcm := NewGCM(circuit.api, &aes)
+	// gcm := NewGCM(circuit.api, &aes)
+	gcm := NewGCMlu(circuit.api, aes)
 
 	// verify aes gcm of chunks
-	gcm.Assert(circuit.Key, circuit.Iv, circuit.ChunkIndex, circuit.PlainChunks, circuit.CipherChunks)
+	// gcm.Assert(circuit.Key, circuit.Iv, circuit.ChunkIndex, circuit.PlainChunks, circuit.CipherChunks)
+	gcm.Assert2(circuit.Key, circuit.Iv, circuit.ChunkIndex, circuit.PlainChunks, circuit.CipherChunks)
 
 	// continue with verified plaintext, extract substring from it, and perform constraint check
 	extractedSubstring := circuit.PlainChunks[circuit.SubstringStart:circuit.SubstringEnd]
